@@ -381,6 +381,7 @@ button.danger:hover { background: var(--eba-light); }
   button { min-height: 48px; }
   .lightbox { padding: 10px; }
   .lightbox-close { width: 44px; height: 44px; font-size: 24px; top: 10px; right: 10px; }
+  .fab { bottom: 20px; right: 16px; width: 52px; height: 52px; font-size: 26px; }
 }
 
 @media (max-width: 480px) {
@@ -406,9 +407,139 @@ button.danger:hover { background: var(--eba-light); }
   .proc-card:active { background: #f1efe8; }
 }
 
+/* ==================== FAB ==================== */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--eba);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  border: none;
+  box-shadow: 0 4px 14px rgba(209,59,46,0.4);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  min-height: auto;
+  padding: 0;
+}
+.fab:hover { background: var(--eba-dark); transform: scale(1.08); box-shadow: 0 6px 18px rgba(209,59,46,0.5); }
+.fab:active { transform: scale(0.92); }
+.fab.hidden { opacity: 0; pointer-events: none; transform: scale(0.5); }
+
+/* ==================== SEVERITY BORDERS ==================== */
+.entry { border-left: 3px solid #ddd; padding-left: 12px; }
+.entry.sev-alta { border-left-color: var(--eba); }
+.entry.sev-media { border-left-color: #e8a735; }
+.entry.sev-baja { border-left-color: #6aae3c; }
+
+/* ==================== CLICKABLE BADGE ==================== */
+.badge.clickable { cursor: pointer; user-select: none; transition: transform 0.15s, box-shadow 0.15s; }
+.badge.clickable:hover { transform: scale(1.1); box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+.badge.clickable:active { transform: scale(0.92); }
+
+/* ==================== COLLAPSIBLE ==================== */
+.collapsible-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-toggle h2 { margin: 0; }
+.collapsible-arrow {
+  font-size: 18px;
+  color: var(--muted);
+  transition: transform 0.25s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.collapsible-arrow.open { transform: rotate(180deg); }
+.collapsible-body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.25s ease, margin 0.25s ease;
+  margin-top: 0;
+}
+.collapsible-body.open {
+  max-height: 800px;
+  opacity: 1;
+  margin-top: 0.75rem;
+}
+
+/* ==================== TAB BADGE ==================== */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--eba);
+  color: #fff;
+  font-size: 10px;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+  font-weight: 600;
+  line-height: 1;
+}
+.tab-count.zero { background: var(--hint); opacity: 0.4; }
+
+/* ==================== PROJECT PROGRESS BAR ==================== */
+.proc-progress {
+  height: 4px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.proc-progress-bar {
+  height: 100%;
+  background: #6aae3c;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ==================== ENTRY PROJECT LABEL ==================== */
+.entry-project {
+  font-size: 11px;
+  color: var(--eba);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+/* ==================== PANEL TRANSITIONS ==================== */
+.tab-panel { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== FILTER ACTIVE COUNT ==================== */
+.filter-active-count {
+  background: var(--eba-light);
+  color: var(--eba-dark);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
 /* ==================== PRINT ==================== */
 @media print {
   .no-print { display: none !important; }
+  .fab { display: none !important; }
   body { background: #fff; max-width: none; padding: 0; }
   .card { border: none; padding: 0; box-shadow: none; }
   .entry { page-break-inside: avoid; }

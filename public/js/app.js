@@ -56,6 +56,8 @@ function load() {
   document.getElementById('f-fecha').value = today();
   renderProcList();
   populateProjectFilters();
+  updateTabBadges();
+  updateFab();
 }
 
 function save() {
@@ -74,21 +76,21 @@ function selectProcess(id) {
   if (id) {
     var p = state.processes.find(function(x) { return x.id === id; });
     if (!p) { selectProcess(null); return; }
-    document.getElementById('current-proc-name').textContent = (p.code ? p.code + ' — ' : '') + p.name;
+    document.getElementById('current-proc-name').textContent = (p.code ? p.code + ' \u2014 ' : '') + p.name;
     bar.style.display = 'flex';
     regTab.disabled = false;
-    // Pre-select current project in filters
     var fp = document.getElementById('filt-proc');
     var rp = document.getElementById('rep-proc');
     if (fp) fp.value = String(id);
     if (rp) rp.value = String(id);
-    switchTab('registro');
+    switchTab('listado');
   } else {
     bar.style.display = 'none';
     regTab.disabled = true;
     switchTab('procesos');
   }
   renderProcList();
+  updateFab();
 }
 
 function populateProjectFilters() {
@@ -115,14 +117,18 @@ function renderProcList() {
   el.innerHTML = '<div class="proc-list">' + state.processes.map(function(p) {
     var entries = state.entries.filter(function(e) { return e.procId === p.id; });
     var abiertas = entries.filter(function(e) { return e.estado !== 'resuelta'; }).length;
+    var resueltas = entries.filter(function(e) { return e.estado === 'resuelta'; }).length;
     var altas = entries.filter(function(e) { return e.sev === 'alta' && e.estado !== 'resuelta'; }).length;
+    var pct = entries.length ? Math.round(resueltas / entries.length * 100) : 0;
     var active = p.id === currentProc ? ' active' : '';
     return '<div class="proc-card' + active + '" onclick="selectProcess(' + p.id + ')">' +
       (p.code ? '<div class="proc-code">' + esc(p.code) + '</div>' : '') +
       '<div class="proc-name">' + esc(p.name) + '</div>' +
       (p.client ? '<div class="proc-meta">Cliente: ' + esc(p.client) + '</div>' : '') +
       (p.desc ? '<div class="proc-meta">' + esc(p.desc) + '</div>' : '') +
-      '<div class="proc-meta" style="margin-top:6px;">' + entries.length + ' entradas · ' + abiertas + ' sin resolver' + (altas ? ' · <span style="color:var(--eba-dark);font-weight:500;">' + altas + ' crítica(s)</span>' : '') + '</div>' +
+      '<div class="proc-meta" style="margin-top:6px;">' + entries.length + ' entradas &middot; ' + abiertas + ' sin resolver' + (altas ? ' &middot; <span style="color:var(--eba-dark);font-weight:500;">' + altas + ' critica(s)</span>' : '') + '</div>' +
+      '<div class="proc-progress"><div class="proc-progress-bar" style="width:' + pct + '%"></div></div>' +
+      '<div class="proc-meta">' + pct + '% resueltas</div>' +
       '<div class="actions">' +
         '<button onclick="event.stopPropagation();editProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 8px;">Editar</button>' +
         '<button class="danger" onclick="event.stopPropagation();deleteProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 8px;">Eliminar</button>' +
@@ -324,8 +330,10 @@ function addEntry() {
   });
   save();
   clearForm();
-  showToast('Entrada añadida');
+  showToast('Entrada guardada');
   renderProcList();
+  updateTabBadges();
+  switchTab('listado');
 }
 
 function clearForm() {
@@ -371,20 +379,27 @@ function refreshEntriesList() {
   });
   var total = allForProc.length;
   var shown = list.length;
+  var showProj = !fpVal;
   var header = '<div style="font-size:12px;color:var(--hint);margin-bottom:8px;">' + shown + ' de ' + total + ' entradas</div>';
   if (!list.length) { el.innerHTML = header + '<div class="empty">Sin entradas con estos filtros</div>'; return; }
-  el.innerHTML = header + list.map(function(e) { return renderEntry(e, true); }).join('');
+  el.innerHTML = header + list.map(function(e) { return renderEntry(e, true, showProj); }).join('');
+  updateFilterCount();
 }
 
-function renderEntry(e, withActions) {
+function renderEntry(e, withActions, showProject) {
   var tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
   var sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
   var estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
   var estL = e.estado === 'progreso' ? 'en progreso' : e.estado;
   var faseLabel = FASES[e.fase] || e.fase || '';
   var atts = (e.attachments || []).map(function(a, i) { return renderAttachment(a, i, false); }).join('');
+  var projectLabel = '';
+  if (showProject) {
+    var proj = state.processes.find(function(p) { return p.id === e.procId; });
+    if (proj) projectLabel = '<div class="entry-project">' + esc(proj.code || proj.name) + '</div>';
+  }
+  var estClick = withActions ? ' clickable" onclick="cycleEstado(' + e.id + ')' : '';
   var actions = withActions ? '<div class="actions no-print">' +
-    '<button onclick="cycleEstado(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Cambiar estado</button>' +
     '<button onclick="openEditEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>' +
     '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>' +
   '</div>' : '';
@@ -392,13 +407,14 @@ function renderEntry(e, withActions) {
   if (e.resp) metaParts.push('Responsable: ' + esc(e.resp));
   if (e.prov) metaParts.push('Proveedor: ' + esc(e.prov));
   if (e.ref) metaParts.push('Ref: ' + esc(e.ref));
-  return '<div class="entry">' +
+  return '<div class="entry sev-' + e.sev + '">' +
+    projectLabel +
     '<div class="entry-header">' +
       '<span class="entry-date">' + esc(e.fecha) + '</span>' +
       (faseLabel ? '<span class="badge b-fase">' + esc(faseLabel) + '</span>' : '') +
       '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
       '<span class="badge ' + sevB + '">sev: ' + esc(e.sev) + '</span>' +
-      '<span class="badge ' + estB + '">' + esc(estL) + '</span>' +
+      '<span class="badge ' + estB + estClick + '">' + esc(estL) + '</span>' +
     '</div>' +
     '<div class="entry-desc">' + esc(e.desc) + '</div>' +
     (e.accion ? '<div class="entry-desc" style="font-style:italic;color:var(--muted);"><strong style="font-style:normal;">Acción:</strong> ' + esc(e.accion) + '</div>' : '') +
@@ -414,6 +430,7 @@ function deleteEntry(id) {
   save();
   refreshEntriesList();
   renderProcList();
+  updateTabBadges();
   showToast('Entrada eliminada');
 }
 
@@ -425,8 +442,9 @@ function cycleEstado(id) {
   save();
   refreshEntriesList();
   renderProcList();
+  updateTabBadges();
   var label = e.estado === 'progreso' ? 'en progreso' : e.estado;
-  showToast('Estado → ' + label);
+  showToast('Estado: ' + label);
 }
 
 // ==================== ENTRY EDITING ====================
@@ -474,6 +492,7 @@ function saveEditEntry() {
   closeEditEntry();
   refreshEntriesList();
   renderProcList();
+  updateTabBadges();
   showToast('Entrada actualizada');
 }
 
@@ -757,6 +776,58 @@ function wipeAll() {
   showToast('Todos los datos eliminados');
 }
 
+// ==================== UI HELPERS ====================
+function toggleCollapsible(id, toggleEl) {
+  var body = document.getElementById(id);
+  var arrow = toggleEl.querySelector('.collapsible-arrow');
+  body.classList.toggle('open');
+  if (arrow) arrow.classList.toggle('open');
+}
+
+function updateFab() {
+  var fab = document.getElementById('fab');
+  if (!fab) return;
+  var activeTab = document.querySelector('.tab.active');
+  var tabName = activeTab ? activeTab.dataset.tab : '';
+  if (currentProc && tabName !== 'registro') {
+    fab.classList.remove('hidden');
+  } else {
+    fab.classList.add('hidden');
+  }
+}
+
+function updateTabBadges() {
+  var listTab = document.querySelector('.tab[data-tab="listado"]');
+  if (!listTab) return;
+  var openCount = state.entries.filter(function(e) { return e.estado !== 'resuelta'; }).length;
+  var badge = listTab.querySelector('.tab-count');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'tab-count';
+    listTab.appendChild(badge);
+  }
+  badge.textContent = openCount;
+  badge.className = 'tab-count' + (openCount === 0 ? ' zero' : '');
+}
+
+function updateFilterCount() {
+  var count = 0;
+  var el = document.getElementById('filter-count');
+  if (!el) return;
+  if (document.getElementById('filt-proc').value) count++;
+  if (document.getElementById('filt-fase').value) count++;
+  if (document.getElementById('filt-tipo').value) count++;
+  if (document.getElementById('filt-sev').value) count++;
+  if (document.getElementById('filt-estado').value) count++;
+  if (document.getElementById('filt-text').value.trim()) count++;
+  if (count > 0) {
+    el.textContent = count + ' activo' + (count > 1 ? 's' : '');
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 // ==================== TABS ====================
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(function(x) {
@@ -768,6 +839,7 @@ function switchTab(name) {
   if (name === 'listado') { populateProjectFilters(); refreshEntriesList(); }
   if (name === 'informe') populateProjectFilters();
   if (name === 'procesos') renderProcList();
+  updateFab();
 }
 
 // ==================== INIT ====================
