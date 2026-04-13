@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#D13B2E">
+  <title>EBA - Gestor de incidencias</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="brand">
+    <div class="brand-title">Gestor de incidencias</div>
+    <div class="brand-sub">EBA - Departamento de producto</div>
+  </div>
+  <div id="current-proc-bar" class="current-proc-bar" style="display:none">
+    <span id="current-proc-name"></span>
+    <button onclick="selectProcess(null)" style="width:auto;flex:0 0 auto;font-size:11px;padding:3px 10px;">X Cerrar</button>
+  </div>
+  <div class="tabs no-print">
+    <button class="tab active" data-tab="procesos">Proyectos</button>
+    <button class="tab" data-tab="registro" disabled>Nueva entrada</button>
+    <button class="tab" data-tab="listado">Listado</button>
+    <button class="tab" data-tab="informe">Informe</button>
+    <button class="tab" data-tab="datos">Datos</button>
+  </div>
+  <div id="tab-procesos" class="tab-panel">
+    <div class="card">
+      <h2>Nuevo proyecto</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="new-proc-code">Codigo / ref.</label>
+          <input id="new-proc-code" type="text" placeholder="ej: sabina ibiza f08" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label for="new-proc-name">Nombre *</label>
+          <input id="new-proc-name" type="text" placeholder="Nombre del proyecto" maxlength="200">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="new-proc-client">Cliente</label>
+          <input id="new-proc-client" type="text" placeholder="Nombre del cliente" maxlength="200">
+        </div>
+        <div class="form-group">
+          <label for="new-proc-desc">Descripcion</label>
+          <input id="new-proc-desc" type="text" placeholder="Breve descripcion" maxlength="500">
+        </div>
+      </div>
+      <button onclick="addProcess()">Crear proyecto</button>
+    </div>
+    <div id="proc-list-container"></div>
+  </div>
+  <div id="tab-registro" class="tab-panel" style="display:none">
+    <div class="card">
+      <h2>Nueva entrada</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-fecha">Fecha</label>
+          <input id="f-fecha" type="date">
+        </div>
+        <div class="form-group">
+          <label for="f-fase">Fase</label>
+          <select id="f-fase">
+            <option value="diseno">Diseno</option>
+            <option value="prototipo">Prototipo</option>
+            <option value="proveedores">Proveedores / compras</option>
+            <option value="materiales">Recepcion materiales</option>
+            <option value="fabricacion">Fabricacion</option>
+            <option value="acabados">Acabados</option>
+            <option value="calidad">Control calidad</option>
+            <option value="embalaje">Embalaje</option>
+            <option value="logistica">Logistica / envio</option>
+            <option value="instalacion">Instalacion / montaje</option>
+            <option value="postventa">Postventa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-tipo">Tipo</label>
+          <select id="f-tipo">
+            <option value="incidencia">Incidencia</option>
+            <option value="observacion">Observacion</option>
+            <option value="mejora">Mejora</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-sev">Severidad</label>
+          <select id="f-sev">
+            <option value="baja">Baja</option>
+            <option value="media" selected>Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-estado">Estado</label>
+          <select id="f-estado">
+            <option value="abierta" selected>Abierta</option>
+            <option value="progreso">En progreso</option>
+            <option value="resuelta">Resuelta</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-resp">Responsable</label>
+          <input id="f-resp" type="text" placeholder="Persona responsable" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label for="f-prov">Proveedor</label>
+          <input id="f-prov" type="text" placeholder="Proveedor implicado" maxlength="200">
+        </div>
+        <div class="form-group">
+          <label for="f-ref">Referencia / lote</label>
+          <input id="f-ref" type="text" placeholder="Ref. material o lote" maxlength="100">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f-desc">Descripcion *</label>
+        <textarea id="f-desc" rows="3" placeholder="Describe la incidencia, observacion o mejora..." maxlength="5000"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="f-accion">Accion tomada / propuesta</label>
+        <textarea id="f-accion" rows="2" placeholder="Accion realizada o sugerida..." maxlength="5000"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Adjuntos</label>
+        <div class="form-row" style="gap:8px;">
+          <input id="f-files" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.dwg,.zip">
+          <label class="camera-btn" for="f-camera">Camara</label>
+          <input id="f-camera" type="file" accept="image/*" capture="environment" style="display:none">
+        </div>
+        <div id="f-attachments" class="attachments"></div>
+      </div>
+      <div class="form-row" style="gap:8px;">
+        <button onclick="addEntry()">Guardar entrada</button>
+        <button onclick="clearForm()" style="background:var(--muted);">Limpiar</button>
+      </div>
+    </div>
+  </div>
+  <div id="tab-listado" class="tab-panel" style="display:none">
+    <div class="card no-print">
+      <h2>Filtros</h2>
+      <div class="filter-group">
+        <select id="filt-proc"><option value="">Todos los proyectos</option></select>
+        <select id="filt-fase">
+          <option value="">Todas las fases</option>
+          <option value="diseno">Diseno</option>
+          <option value="prototipo">Prototipo</option>
+          <option value="proveedores">Proveedores / compras</option>
+          <option value="materiales">Recepcion materiales</option>
+          <option value="fabricacion">Fabricacion</option>
+          <option value="acabados">Acabados</option>
+          <option value="calidad">Control calidad</option>
+          <option value="embalaje">Embalaje</option>
+          <option value="logistica">Logistica / envio</option>
+          <option value="instalacion">Instalacion / montaje</option>
+          <option value="postventa">Postventa</option>
+        </select>
+        <select id="filt-tipo">
+          <option value="">Todos los tipos</option>
+          <option value="incidencia">Incidencia</option>
+          <option value="observacion">Observacion</option>
+          <option value="mejora">Mejora</option>
+        </select>
+        <select id="filt-sev">
+          <option value="">Todas las severidades</option>
+          <option value="baja">Baja</option>
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+        </select>
+        <select id="filt-estado">
+          <option value="">Todos los estados</option>
+          <option value="abierta">Abierta</option>
+          <option value="progreso">En progreso</option>
+          <option value="resuelta">Resuelta</option>
+        </select>
+        <input id="filt-text" type="search" placeholder="Buscar texto libre...">
+      </div>
+    </div>
+    <div id="entries-list"></div>
+  </div>
+  <div id="tab-informe" class="tab-panel" style="display:none">
+    <div class="card no-print">
+      <h2>Generar informe</h2>
+      <div class="filter-group">
+        <div class="form-group" style="flex:1;min-width:160px;">
+          <label for="rep-proc">Proyecto</label>
+          <select id="rep-proc"><option value="">Todos los proyectos</option></select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="rep-desde">Desde</label>
+          <input id="rep-desde" type="date">
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="rep-hasta">Hasta</label>
+          <input id="rep-hasta" type="date">
+        </div>
+        <div class="form-group" style="flex:1;min-width:140px;">
+          <label for="rep-fase">Fase</label>
+          <select id="rep-fase">
+            <option value="">Todas</option>
+            <option value="diseno">Diseno</option>
+            <option value="prototipo">Prototipo</option>
+            <option value="proveedores">Proveedores / compras</option>
+            <option value="materiales">Recepcion materiales</option>
+            <option value="fabricacion">Fabricacion</option>
+            <option value="acabados">Acabados</option>
+            <option value="calidad">Control calidad</option>
+            <option value="embalaje">Embalaje</option>
+            <option value="logistica">Logistica / envio</option>
+            <option value="instalacion">Instalacion / montaje</option>
+            <option value="postventa">Postventa</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="rep-att">Adjuntos</label>
+          <select id="rep-att">
+            <option value="si">Incluir</option>
+            <option value="no">Excluir</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="generateReport()">Generar</button>
+      <button onclick="window.print()" style="background:var(--muted);margin-top:6px;">Imprimir / PDF</button>
+    </div>
+    <div id="report-output"></div>
+  </div>
+  <div id="tab-datos" class="tab-panel" style="display:none">
+    <div class="card">
+      <h2>Gestion de datos</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Exporta una copia de seguridad o importa datos desde otro dispositivo.</p>
+      <button onclick="exportJSON()">Exportar copia de seguridad (JSON)</button>
+      <div class="form-group" style="margin-top:12px;">
+        <label for="import-file">Importar copia</label>
+        <input id="import-file" type="file" accept=".json" onchange="importJSON(event)">
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+      <button class="danger" onclick="wipeAll()">Borrar todos los datos</button>
+    </div>
+  </div>
+  <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Vista ampliada">
+  </div>
+  <div id="edit-overlay" class="edit-overlay">
+    <div class="edit-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2 style="margin:0;">Editar entrada</h2>
+        <button onclick="closeEditEntry()" style="width:auto;background:transparent;color:var(--muted);font-size:20px;padding:4px 8px;">X</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha</label><input id="edit-fecha" type="date"></div>
+        <div class="form-group"><label>Fase</label>
+          <select id="edit-fase">
+            <option value="diseno">Diseno</option>
+            <option value="prototipo">Prototipo</option>
+            <option value="proveedores">Proveedores / compras</option>
+            <option value="materiales">Recepcion materiales</option>
+            <option value="fabricacion">Fabricacion</option>
+            <option value="acabados">Acabados</option>
+            <option value="calidad">Control calidad</option>
+            <option value="embalaje">Embalaje</option>
+            <option value="logistica">Logistica / envio</option>
+            <option value="instalacion">Instalacion / montaje</option>
+            <option value="postventa">Postventa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tipo</label>
+          <select id="edit-tipo">
+            <option value="incidencia">Incidencia</option>
+            <option value="observacion">Observacion</option>
+            <option value="mejora">Mejora</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Severidad</label>
+          <select id="edit-sev">
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Estado</label>
+          <select id="edit-estado">
+            <option value="abierta">Abierta</option>
+            <option value="progreso">En progreso</option>
+            <option value="resuelta">Resuelta</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Responsable</label><input id="edit-resp" type="text" maxlength="100"></div>
+        <div class="form-group"><label>Proveedor</label><input id="edit-prov" type="text" maxlength="200"></div>
+        <div class="form-group"><label>Ref / lote</label><input id="edit-ref" type="text" maxlength="100"></div>
+      </div>
+      <div class="form-group"><label>Descripcion *</label><textarea id="edit-desc" rows="3" maxlength="5000"></textarea></div>
+      <div class="form-group"><label>Accion</label><textarea id="edit-accion" rows="2" maxlength="5000"></textarea></div>
+      <div class="form-row" style="gap:8px;">
+        <button onclick="saveEditEntry()">Guardar cambios</button>
+        <button onclick="closeEditEntry()" style="background:var(--muted);">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  <div id="app-toast" class="toast"></div>
+  <script src="js/app.js"></script>
+</body>
+</html>

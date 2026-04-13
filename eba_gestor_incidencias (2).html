@@ -1,0 +1,889 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D13B2E">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root {
+    --eba: #D13B2E;
+    --eba-dark: #A82B20;
+    --eba-light: #FBEAE7;
+    --ink: #2c2c2a;
+    --muted: #5f5e5a;
+    --hint: #888780;
+    --bg: #fafaf7;
+    --surface: #fff;
+    --border: rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1100px; margin: 0 auto; padding: 1.5rem; color: var(--ink); background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 0.25rem; }
+  .brand img { width: 56px; height: 56px; border-radius: 8px; }
+  .brand h1 { font-size: 22px; font-weight: 500; margin: 0; color: var(--eba); }
+  .brand .dept { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 1rem; }
+  h2 { font-size: 18px; font-weight: 500; margin: 1.5rem 0 0.75rem; }
+  h3 { font-size: 15px; font-weight: 500; margin: 1rem 0 0.5rem; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row > * { flex: 1; min-width: 140px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  input, select, textarea, button { font-family: inherit; font-size: 16px; padding: 11px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; background: var(--surface); width: 100%; color: var(--ink); min-height: 44px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--eba); box-shadow: 0 0 0 2px var(--eba-light); }
+  textarea { resize: vertical; min-height: 70px; }
+  button { cursor: pointer; background: var(--surface); font-weight: 500; }
+  button:hover { background: #f1efe8; }
+  button.primary { background: var(--eba); color: #fff; border-color: var(--eba); }
+  button.primary:hover { background: var(--eba-dark); border-color: var(--eba-dark); }
+  button.danger { color: var(--eba-dark); border-color: rgba(168,43,32,0.3); }
+  button.danger:hover { background: var(--eba-light); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0.75rem; }
+  .actions button { flex: 0 0 auto; width: auto; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 1rem 0; }
+  .stat { background: #f1efe8; border-radius: 8px; padding: 12px; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+  .stat-value { font-size: 22px; font-weight: 500; margin-top: 2px; }
+  .stat.hl { background: var(--eba-light); }
+  .stat.hl .stat-value { color: var(--eba-dark); }
+  .entry { border-top: 0.5px solid rgba(0,0,0,0.1); padding: 14px 0; }
+  .entry:first-child { border-top: none; padding-top: 0; }
+  .entry-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+  .b-inc { background: var(--eba-light); color: var(--eba-dark); }
+  .b-obs { background: #e6f1fb; color: #0c447c; }
+  .b-mej { background: #eaf3de; color: #27500a; }
+  .b-low { background: #eaf3de; color: #27500a; }
+  .b-med { background: #faeeda; color: #633806; }
+  .b-high { background: var(--eba-light); color: var(--eba-dark); }
+  .b-open { background: #faeeda; color: #633806; }
+  .b-prog { background: #e6f1fb; color: #0c447c; }
+  .b-done { background: #eaf3de; color: #27500a; }
+  .b-fase { background: #eee; color: #444; }
+  .entry-date { font-size: 12px; color: var(--hint); font-weight: 500; }
+  .entry-desc { font-size: 14px; margin: 6px 0; white-space: pre-wrap; line-height: 1.5; }
+  .entry-meta { font-size: 12px; color: var(--muted); }
+  .attachments { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .att { position: relative; border: 0.5px solid var(--border); border-radius: 8px; overflow: hidden; background: #f1efe8; }
+  .att img { display: block; width: 100px; height: 100px; object-fit: cover; cursor: pointer; }
+  .att-file { width: 100px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; font-size: 11px; text-align: center; cursor: pointer; color: var(--ink); word-break: break-word; }
+  .att-file-icon { font-size: 24px; margin-bottom: 4px; }
+  .att-remove { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; padding: 0; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .filters select, .filters input { flex: 0 0 auto; width: auto; min-width: 120px; }
+  .empty { color: var(--hint); font-size: 14px; text-align: center; padding: 1.5rem; }
+  .proc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .proc-card { border: 0.5px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer; background: var(--surface); }
+  .proc-card:hover { background: #f1efe8; border-color: rgba(0,0,0,0.3); }
+  .proc-card.active { border: 2px solid var(--eba); padding: 13px; }
+  .proc-name { font-weight: 500; font-size: 15px; margin-bottom: 4px; }
+  .proc-code { font-size: 11px; color: var(--eba); font-weight: 500; letter-spacing: 0.5px; }
+  .proc-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab { padding: 12px 16px; cursor: pointer; border: none; background: none; border-radius: 0; width: auto; flex: 0 0 auto; color: var(--muted); border-bottom: 2px solid transparent; font-size: 15px; min-height: 48px; }
+  .tab.active { color: var(--eba); border-bottom-color: var(--eba); font-weight: 500; }
+  .tab:disabled { opacity: 0.4; cursor: not-allowed; }
+  .current-proc { background: var(--eba-light); border: 0.5px solid rgba(168,43,32,0.2); border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .current-proc strong { color: var(--eba-dark); }
+  .report-section { margin: 1.5rem 0; }
+  .report-header { border-bottom: 2px solid var(--eba); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 14px; }
+  .report-header img { width: 48px; height: 48px; border-radius: 6px; }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .lightbox.active { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 90vh; }
+  .lightbox-close { position: absolute; top: 15px; right: 20px; background: rgba(255,255,255,0.2); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+  .fase-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 1rem 0; }
+  .fase-item { background: #f1efe8; padding: 10px; border-radius: 8px; font-size: 12px; }
+  .fase-item strong { display: block; font-size: 18px; color: var(--ink); margin-top: 2px; }
+  @media (max-width: 900px) {
+    body { padding: 1rem; }
+    .brand img { width: 48px; height: 48px; }
+    .brand h1 { font-size: 20px; }
+    h2 { font-size: 17px; }
+    .card { padding: 1rem; }
+    .row > * { min-width: 100%; flex: 1 1 100%; }
+    .filters { flex-direction: column; }
+    .filters select, .filters input { width: 100%; min-width: 0; }
+    .tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; flex-shrink: 0; }
+    .proc-list { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat-value { font-size: 20px; }
+    .fase-breakdown { grid-template-columns: repeat(2, 1fr); }
+    .current-proc { flex-direction: column; align-items: stretch; }
+    .current-proc button { width: 100%; }
+    .att img, .att-file { width: 90px; height: 90px; }
+    .att-remove { width: 24px; height: 24px; font-size: 14px; }
+    .entry-header { gap: 6px; }
+    .badge { font-size: 12px; padding: 3px 9px; }
+    .actions button { flex: 1 1 auto; min-width: 0; }
+    button { min-height: 48px; }
+    .lightbox { padding: 10px; }
+    .lightbox-close { width: 44px; height: 44px; font-size: 24px; top: 10px; right: 10px; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 0.75rem; }
+    .brand { gap: 10px; }
+    .brand img { width: 42px; height: 42px; }
+    .brand h1 { font-size: 18px; }
+    .card { padding: 0.875rem; border-radius: 10px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { padding: 10px; }
+    .fase-breakdown { grid-template-columns: 1fr; }
+    .tab { padding: 12px 14px; font-size: 14px; }
+  }
+  @media (hover: none) {
+    button:hover { background: var(--surface); }
+    button.primary:hover { background: var(--eba); }
+    .proc-card:hover { background: var(--surface); }
+    button:active { background: #f1efe8; }
+    button.primary:active { background: var(--eba-dark); }
+    .proc-card:active { background: #f1efe8; }
+  }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; max-width: none; padding: 0; }
+    .card { border: none; padding: 0; box-shadow: none; }
+    .entry { page-break-inside: avoid; }
+    .report-header { border-bottom: 2px solid var(--eba); }
+  }
+</style>
+
+<div class="brand">
+  <img src="data:image/jpeg;base64,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" alt="eba">
+  <div>
+    <h1>Gestor de incidencias</h1>
+    <div class="dept">Departamento de producto</div>
+  </div>
+</div>
+
+<div id="current-proc-bar" class="current-proc no-print" style="display:none;">
+  <div>Proyecto activo: <strong id="current-proc-name"></strong></div>
+  <button onclick="selectProcess(null)" style="width:auto;flex:0 0 auto;">Cambiar proyecto</button>
+</div>
+
+<div class="tabs no-print">
+  <button class="tab active" data-tab="procesos">Proyectos</button>
+  <button class="tab" data-tab="registro" disabled>Nueva entrada</button>
+  <button class="tab" data-tab="listado" disabled>Listado</button>
+  <button class="tab" data-tab="informe" disabled>Informe</button>
+  <button class="tab" data-tab="datos">Datos</button>
+</div>
+
+<div id="tab-procesos">
+  <div class="card">
+    <h2 style="margin-top:0;">Crear nuevo proyecto</h2>
+    <div class="row">
+      <div>
+        <label>Código / referencia</label>
+        <input type="text" id="new-proc-code" placeholder="Ej: MUE-2026-014">
+      </div>
+      <div style="flex:2;">
+        <label>Nombre del proyecto</label>
+        <input type="text" id="new-proc-name" placeholder="Ej: Mesa comedor roble Hotel Astur">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Cliente</label>
+        <input type="text" id="new-proc-client" placeholder="Nombre del cliente">
+      </div>
+      <div style="flex:2;">
+        <label>Descripción (opcional)</label>
+        <input type="text" id="new-proc-desc" placeholder="Breve descripción del proyecto">
+      </div>
+      <button class="primary" onclick="addProcess()" style="flex:0 0 auto;width:auto;">Crear</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0;">Proyectos</h2>
+    <div id="proc-list-container"></div>
+  </div>
+</div>
+
+<div id="tab-registro" style="display:none;">
+  <div class="card">
+    <h2 style="margin-top:0;">Nueva entrada</h2>
+    <div class="row">
+      <div>
+        <label>Fecha</label>
+        <input type="date" id="f-fecha">
+      </div>
+      <div>
+        <label>Fase</label>
+        <select id="f-fase">
+          <option value="diseno">Diseño</option>
+          <option value="prototipo">Prototipo</option>
+          <option value="proveedores">Proveedores / compras</option>
+          <option value="materiales">Recepción de materiales</option>
+          <option value="fabricacion">Fabricación</option>
+          <option value="acabados">Acabados</option>
+          <option value="calidad">Control de calidad</option>
+          <option value="embalaje">Embalaje</option>
+          <option value="logistica">Logística / envío</option>
+          <option value="instalacion">Instalación / montaje</option>
+          <option value="postventa">Postventa</option>
+        </select>
+      </div>
+      <div>
+        <label>Tipo</label>
+        <select id="f-tipo">
+          <option value="incidencia">Incidencia</option>
+          <option value="observacion">Observación</option>
+          <option value="mejora">Mejora</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Severidad</label>
+        <select id="f-sev">
+          <option value="baja">Baja</option>
+          <option value="media" selected>Media</option>
+          <option value="alta">Alta</option>
+        </select>
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="f-estado">
+          <option value="abierta">Abierta</option>
+          <option value="progreso">En progreso</option>
+          <option value="resuelta">Resuelta</option>
+        </select>
+      </div>
+      <div>
+        <label>Responsable</label>
+        <input type="text" id="f-resp" placeholder="Nombre">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Proveedor implicado (si aplica)</label>
+        <input type="text" id="f-prov" placeholder="Nombre del proveedor">
+      </div>
+      <div>
+        <label>Referencia / lote / OF</label>
+        <input type="text" id="f-ref" placeholder="Ej: OF-2026-033, Lote A">
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <label>Descripción</label>
+      <textarea id="f-desc" placeholder="Describe la incidencia, observación o propuesta de mejora..."></textarea>
+    </div>
+    <div style="margin-top:10px;">
+      <label>Acciones tomadas / propuesta (opcional)</label>
+      <textarea id="f-accion" placeholder="Qué se ha hecho o qué se propone hacer" style="min-height:50px;"></textarea>
+    </div>
+      <div style="margin-top:10px;">
+        <label>Adjuntos (fotos, planos, PDFs · máx. 4MB por archivo)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="file" id="f-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.dwg" style="flex:1;min-width:200px;">
+          <input type="file" id="f-camera" accept="image/*" capture="environment" style="display:none;">
+          <button type="button" onclick="document.getElementById('f-camera').click()" style="flex:0 0 auto;width:auto;">📷 Tomar foto</button>
+        </div>
+        <div id="f-attachments" class="attachments"></div>
+      </div>
+    <div class="actions">
+      <button class="primary" onclick="addEntry()">Añadir entrada</button>
+      <button onclick="clearForm()">Limpiar</button>
+    </div>
+  </div>
+</div>
+
+<div id="tab-listado" style="display:none;">
+  <div class="card">
+    <div class="filters">
+      <select id="filt-fase">
+        <option value="">Todas las fases</option>
+        <option value="diseno">Diseño</option>
+        <option value="prototipo">Prototipo</option>
+        <option value="proveedores">Proveedores</option>
+        <option value="materiales">Materiales</option>
+        <option value="fabricacion">Fabricación</option>
+        <option value="acabados">Acabados</option>
+        <option value="calidad">Control de calidad</option>
+        <option value="embalaje">Embalaje</option>
+        <option value="logistica">Logística</option>
+        <option value="instalacion">Instalación</option>
+        <option value="postventa">Postventa</option>
+      </select>
+      <select id="filt-tipo">
+        <option value="">Todos los tipos</option>
+        <option value="incidencia">Incidencias</option>
+        <option value="observacion">Observaciones</option>
+        <option value="mejora">Mejoras</option>
+      </select>
+      <select id="filt-estado">
+        <option value="">Todos los estados</option>
+        <option value="abierta">Abiertas</option>
+        <option value="progreso">En progreso</option>
+        <option value="resuelta">Resueltas</option>
+      </select>
+      <select id="filt-sev">
+        <option value="">Todas severidades</option>
+        <option value="alta">Alta</option>
+        <option value="media">Media</option>
+        <option value="baja">Baja</option>
+      </select>
+      <input type="text" id="filt-text" placeholder="Buscar texto...">
+    </div>
+    <div id="entries-list"></div>
+  </div>
+</div>
+
+<div id="tab-informe" style="display:none;">
+  <div class="card no-print">
+    <div class="row">
+      <div>
+        <label>Desde</label>
+        <input type="date" id="rep-desde">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" id="rep-hasta">
+      </div>
+      <div>
+        <label>Fase (opcional)</label>
+        <select id="rep-fase">
+          <option value="">Todas</option>
+          <option value="diseno">Diseño</option>
+          <option value="prototipo">Prototipo</option>
+          <option value="proveedores">Proveedores</option>
+          <option value="materiales">Materiales</option>
+          <option value="fabricacion">Fabricación</option>
+          <option value="acabados">Acabados</option>
+          <option value="calidad">Control de calidad</option>
+          <option value="embalaje">Embalaje</option>
+          <option value="logistica">Logística</option>
+          <option value="instalacion">Instalación</option>
+          <option value="postventa">Postventa</option>
+        </select>
+      </div>
+      <div>
+        <label>Adjuntos</label>
+        <select id="rep-att">
+          <option value="si">Incluir fotos</option>
+          <option value="no">Sin fotos</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="generateReport()">Generar informe</button>
+      <button onclick="window.print()">Imprimir / Guardar PDF</button>
+    </div>
+  </div>
+  <div id="report-output"></div>
+</div>
+
+<div id="tab-datos" style="display:none;">
+  <div class="card">
+    <h2 style="margin-top:0;">Gestión de datos</h2>
+    <p class="subtitle">Los datos se guardan automáticamente entre sesiones. Exporta periódicamente como copia de seguridad.</p>
+    <div class="actions">
+      <button onclick="exportJSON()">Exportar copia (JSON)</button>
+      <button onclick="document.getElementById('import-file').click()">Importar copia</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+      <button class="danger" onclick="wipeAll()">Borrar todos los datos</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+const LOGO = "data:image/jpeg;base64,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";
+const MAX_FILE_MB = 4;
+const FASES = {
+  diseno: 'Diseño', prototipo: 'Prototipo', proveedores: 'Proveedores',
+  materiales: 'Materiales', fabricacion: 'Fabricación', acabados: 'Acabados',
+  calidad: 'Control calidad', embalaje: 'Embalaje', logistica: 'Logística',
+  instalacion: 'Instalación', postventa: 'Postventa'
+};
+let state = { processes: [], entries: [] };
+let currentProc = null;
+let pendingAttachments = [];
+
+async function load() {
+  try {
+    const r = await window.storage.get('eba-incidencias-v1');
+    if (r && r.value) state = JSON.parse(r.value);
+  } catch(e) {}
+  if (!state.processes) state.processes = [];
+  if (!state.entries) state.entries = [];
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
+  renderProcList();
+}
+
+async function save() {
+  try {
+    await window.storage.set('eba-incidencias-v1', JSON.stringify(state));
+  } catch(e) {
+    alert('Error guardando: ' + e.message + '\nPosible causa: adjuntos demasiado grandes (límite ~5MB total).');
+  }
+}
+
+function selectProcess(id) {
+  currentProc = id;
+  const bar = document.getElementById('current-proc-bar');
+  const tabs = document.querySelectorAll('.tab[data-tab="registro"], .tab[data-tab="listado"], .tab[data-tab="informe"]');
+  if (id) {
+    const p = state.processes.find(x => x.id === id);
+    document.getElementById('current-proc-name').textContent = (p.code ? p.code + ' — ' : '') + p.name;
+    bar.style.display = 'flex';
+    tabs.forEach(t => t.disabled = false);
+    switchTab('registro');
+  } else {
+    bar.style.display = 'none';
+    tabs.forEach(t => t.disabled = true);
+    switchTab('procesos');
+  }
+  renderProcList();
+}
+
+function renderProcList() {
+  const el = document.getElementById('proc-list-container');
+  if (!state.processes.length) {
+    el.innerHTML = '<div class="empty">No hay proyectos. Crea uno arriba para empezar.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="proc-list">' + state.processes.map(p => {
+    const entries = state.entries.filter(e => e.procId === p.id);
+    const abiertas = entries.filter(e => e.estado !== 'resuelta').length;
+    const altas = entries.filter(e => e.sev === 'alta' && e.estado !== 'resuelta').length;
+    const active = p.id === currentProc ? ' active' : '';
+    return '<div class="proc-card' + active + '" onclick="selectProcess(' + p.id + ')">' +
+      (p.code ? '<div class="proc-code">' + escape(p.code) + '</div>' : '') +
+      '<div class="proc-name">' + escape(p.name) + '</div>' +
+      (p.client ? '<div class="proc-meta">Cliente: ' + escape(p.client) + '</div>' : '') +
+      (p.desc ? '<div class="proc-meta">' + escape(p.desc) + '</div>' : '') +
+      '<div class="proc-meta" style="margin-top:6px;">' + entries.length + ' entradas · ' + abiertas + ' sin resolver' + (altas ? ' · ' + altas + ' crítica(s)' : '') + '</div>' +
+      '<div class="actions">' +
+        '<button onclick="event.stopPropagation();renameProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 8px;">Editar</button>' +
+        '<button class="danger" onclick="event.stopPropagation();deleteProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 8px;">Eliminar</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function addProcess() {
+  const name = document.getElementById('new-proc-name').value.trim();
+  if (!name) { alert('Introduce un nombre'); return; }
+  state.processes.push({
+    id: Date.now(),
+    code: document.getElementById('new-proc-code').value.trim(),
+    name,
+    client: document.getElementById('new-proc-client').value.trim(),
+    desc: document.getElementById('new-proc-desc').value.trim(),
+    created: new Date().toISOString()
+  });
+  ['new-proc-code','new-proc-name','new-proc-client','new-proc-desc'].forEach(id => document.getElementById(id).value = '');
+  save();
+  renderProcList();
+}
+
+function renameProcess(id) {
+  const p = state.processes.find(x => x.id === id);
+  const name = prompt('Nombre del proyecto:', p.name);
+  if (!name || !name.trim()) return;
+  p.name = name.trim();
+  const code = prompt('Código / referencia:', p.code || '');
+  if (code !== null) p.code = code.trim();
+  const client = prompt('Cliente:', p.client || '');
+  if (client !== null) p.client = client.trim();
+  save(); renderProcList();
+}
+
+function deleteProcess(id) {
+  const p = state.processes.find(x => x.id === id);
+  const count = state.entries.filter(e => e.procId === id).length;
+  if (!confirm('¿Eliminar "' + p.name + '"? Se borrarán también sus ' + count + ' entrada(s).')) return;
+  state.processes = state.processes.filter(x => x.id !== id);
+  state.entries = state.entries.filter(e => e.procId !== id);
+  if (currentProc === id) { selectProcess(null); return; }
+  save(); renderProcList();
+}
+
+async function handleFileSelection(ev) {
+  for (const file of ev.target.files) {
+    try {
+      let processed;
+      if (file.type && file.type.startsWith('image/')) {
+        processed = await compressImage(file);
+      } else {
+        if (file.size > MAX_FILE_MB * 1024 * 1024) {
+          alert('"' + file.name + '" supera ' + MAX_FILE_MB + 'MB y no se añadirá.');
+          continue;
+        }
+        const data = await fileToBase64(file);
+        processed = { name: file.name, type: file.type, size: file.size, data };
+      }
+      pendingAttachments.push(processed);
+    } catch(e) {
+      alert('Error procesando "' + file.name + '": ' + e.message);
+    }
+  }
+  ev.target.value = '';
+  renderPendingAttachments();
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1600;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const data = canvas.toDataURL('image/jpeg', 0.82);
+        const approxSize = Math.round(data.length * 0.75);
+        resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', size: approxSize, data });
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('f-files').addEventListener('change', handleFileSelection);
+document.getElementById('f-camera').addEventListener('change', handleFileSelection);
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function renderPendingAttachments() {
+  const el = document.getElementById('f-attachments');
+  if (!pendingAttachments.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingAttachments.map((a, i) => renderAttachment(a, i, true)).join('');
+}
+
+function renderAttachment(a, idx, removable) {
+  const isImg = a.type && a.type.startsWith('image/');
+  const rm = removable ? '<button class="att-remove" onclick="removePending(' + idx + ')">×</button>' : '';
+  if (isImg) {
+    return '<div class="att"><img src="' + a.data + '" onclick="openLightbox(this.src)" alt="' + escape(a.name) + '">' + rm + '</div>';
+  }
+  const icon = a.type === 'application/pdf' ? '📄' : '📎';
+  const shortName = a.name.length > 20 ? a.name.slice(0,18) + '…' : a.name;
+  return '<div class="att"><div class="att-file" data-data="' + a.data + '" data-name="' + escape(a.name) + '" onclick="downloadAtt(this)"><div class="att-file-icon">' + icon + '</div>' + escape(shortName) + '</div>' + rm + '</div>';
+}
+
+function removePending(i) {
+  pendingAttachments.splice(i, 1);
+  renderPendingAttachments();
+}
+
+function downloadAtt(el) {
+  const a = document.createElement('a');
+  a.href = el.dataset.data; a.download = el.dataset.name; a.click();
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+function addEntry() {
+  if (!currentProc) { alert('Selecciona un proyecto'); return; }
+  const desc = document.getElementById('f-desc').value.trim();
+  if (!desc) { alert('La descripción es obligatoria'); return; }
+  state.entries.push({
+    id: Date.now(),
+    procId: currentProc,
+    fecha: document.getElementById('f-fecha').value,
+    fase: document.getElementById('f-fase').value,
+    tipo: document.getElementById('f-tipo').value,
+    sev: document.getElementById('f-sev').value,
+    estado: document.getElementById('f-estado').value,
+    resp: document.getElementById('f-resp').value.trim(),
+    prov: document.getElementById('f-prov').value.trim(),
+    ref: document.getElementById('f-ref').value.trim(),
+    desc,
+    accion: document.getElementById('f-accion').value.trim(),
+    attachments: pendingAttachments.slice()
+  });
+  save();
+  clearForm();
+  alert('Entrada añadida');
+}
+
+function clearForm() {
+  ['f-desc','f-resp','f-prov','f-ref','f-accion'].forEach(id => document.getElementById(id).value = '');
+  pendingAttachments = [];
+  renderPendingAttachments();
+}
+
+function getCurrentEntries() {
+  return state.entries.filter(e => e.procId === currentProc);
+}
+
+function refreshEntriesList() {
+  const el = document.getElementById('entries-list');
+  const ff = document.getElementById('filt-fase').value;
+  const fi = document.getElementById('filt-tipo').value;
+  const fe = document.getElementById('filt-estado').value;
+  const fs = document.getElementById('filt-sev').value;
+  const ft = document.getElementById('filt-text').value.toLowerCase();
+  let list = getCurrentEntries().sort((a,b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+  if (ff) list = list.filter(e => e.fase === ff);
+  if (fi) list = list.filter(e => e.tipo === fi);
+  if (fe) list = list.filter(e => e.estado === fe);
+  if (fs) list = list.filter(e => e.sev === fs);
+  if (ft) list = list.filter(e => (e.desc+' '+(e.resp||'')+' '+(e.prov||'')+' '+(e.ref||'')+' '+(e.accion||'')).toLowerCase().includes(ft));
+  if (!list.length) { el.innerHTML = '<div class="empty">Sin entradas</div>'; return; }
+  el.innerHTML = list.map(e => renderEntry(e, true)).join('');
+}
+
+function renderEntry(e, withActions) {
+  const tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
+  const sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
+  const estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
+  const estL = e.estado === 'progreso' ? 'en progreso' : e.estado;
+  const faseLabel = FASES[e.fase] || e.fase || '';
+  const atts = (e.attachments||[]).map((a,i) => renderAttachment(a, i, false)).join('');
+  const actions = withActions ? '<div class="actions no-print">' +
+    '<button onclick="cycleEstado(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Cambiar estado</button>' +
+    '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>' +
+  '</div>' : '';
+  const metaParts = [];
+  if (e.resp) metaParts.push('Responsable: ' + escape(e.resp));
+  if (e.prov) metaParts.push('Proveedor: ' + escape(e.prov));
+  if (e.ref) metaParts.push('Ref: ' + escape(e.ref));
+  return '<div class="entry">' +
+    '<div class="entry-header">' +
+      '<span class="entry-date">' + e.fecha + '</span>' +
+      (faseLabel ? '<span class="badge b-fase">' + faseLabel + '</span>' : '') +
+      '<span class="badge ' + tipoB + '">' + e.tipo + '</span>' +
+      '<span class="badge ' + sevB + '">sev: ' + e.sev + '</span>' +
+      '<span class="badge ' + estB + '">' + estL + '</span>' +
+    '</div>' +
+    '<div class="entry-desc">' + escape(e.desc) + '</div>' +
+    (e.accion ? '<div class="entry-desc" style="font-style:italic;color:var(--muted);"><strong style="font-style:normal;">Acción:</strong> ' + escape(e.accion) + '</div>' : '') +
+    (metaParts.length ? '<div class="entry-meta">' + metaParts.join(' · ') + '</div>' : '') +
+    (atts ? '<div class="attachments">' + atts + '</div>' : '') +
+    actions +
+  '</div>';
+}
+
+function deleteEntry(id) {
+  if (!confirm('¿Eliminar esta entrada?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  save(); refreshEntriesList(); renderProcList();
+}
+
+function cycleEstado(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  const next = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
+  e.estado = next[e.estado];
+  save(); refreshEntriesList(); renderProcList();
+}
+
+function generateReport() {
+  if (!currentProc) return;
+  const proc = state.processes.find(p => p.id === currentProc);
+  const desde = document.getElementById('rep-desde').value;
+  const hasta = document.getElementById('rep-hasta').value;
+  const faseF = document.getElementById('rep-fase').value;
+  const incAtt = document.getElementById('rep-att').value === 'si';
+  let list = getCurrentEntries();
+  if (desde) list = list.filter(e => e.fecha >= desde);
+  if (hasta) list = list.filter(e => e.fecha <= hasta);
+  if (faseF) list = list.filter(e => e.fase === faseF);
+  list.sort((a,b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);
+
+  const total = list.length;
+  const nInc = list.filter(e => e.tipo === 'incidencia').length;
+  const nObs = list.filter(e => e.tipo === 'observacion').length;
+  const nMej = list.filter(e => e.tipo === 'mejora').length;
+  const nAbi = list.filter(e => e.estado === 'abierta').length;
+  const nProg = list.filter(e => e.estado === 'progreso').length;
+  const nRes = list.filter(e => e.estado === 'resuelta').length;
+  const nAlta = list.filter(e => e.sev === 'alta').length;
+  const nMed = list.filter(e => e.sev === 'media').length;
+  const nBaja = list.filter(e => e.sev === 'baja').length;
+
+  const porFase = {};
+  list.forEach(e => { porFase[e.fase] = (porFase[e.fase]||0) + 1; });
+
+  const proveedores = {};
+  list.filter(e => e.prov).forEach(e => { proveedores[e.prov] = (proveedores[e.prov]||0) + 1; });
+
+  const byDate = {};
+  list.forEach(e => { (byDate[e.fecha] = byDate[e.fecha] || []).push(e); });
+  const fechas = Object.keys(byDate).sort();
+
+  const today = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
+  const rango = (desde || hasta) ? ((desde||'inicio') + ' a ' + (hasta||'hoy')) : 'Periodo completo';
+
+  let html = '<div class="card">' +
+    '<div class="report-header">' +
+      '<img src="' + LOGO + '" alt="eba">' +
+      '<div>' +
+        '<div style="font-size:11px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;">eba · Departamento de producto</div>' +
+        '<h1 style="margin:2px 0 0;color:var(--eba);font-size:20px;">Informe de incidencias</h1>' +
+      '</div>' +
+    '</div>' +
+    '<h2 style="margin-top:0.5rem;">' + escape(proc.name) + '</h2>' +
+    '<p class="subtitle">' +
+      (proc.code ? '<strong>' + escape(proc.code) + '</strong> · ' : '') +
+      (proc.client ? 'Cliente: ' + escape(proc.client) + ' · ' : '') +
+      escape(rango) + ' · Generado ' + today +
+    '</p>' +
+    '<h2>Resumen ejecutivo</h2>' +
+    '<div class="stats">' +
+      '<div class="stat"><div class="stat-label">Total</div><div class="stat-value">' + total + '</div></div>' +
+      '<div class="stat hl"><div class="stat-label">Incidencias</div><div class="stat-value">' + nInc + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Observaciones</div><div class="stat-value">' + nObs + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Mejoras</div><div class="stat-value">' + nMej + '</div></div>' +
+    '</div>' +
+    '<div class="stats">' +
+      '<div class="stat"><div class="stat-label">Abiertas</div><div class="stat-value">' + nAbi + '</div></div>' +
+      '<div class="stat"><div class="stat-label">En progreso</div><div class="stat-value">' + nProg + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Resueltas</div><div class="stat-value">' + nRes + '</div></div>' +
+      '<div class="stat"><div class="stat-label">% Resueltas</div><div class="stat-value">' + (total ? Math.round(nRes/total*100) : 0) + '%</div></div>' +
+    '</div>';
+
+  if (total === 0) {
+    html += '<div class="empty">No hay entradas para los filtros seleccionados</div></div>';
+    document.getElementById('report-output').innerHTML = html;
+    return;
+  }
+
+  html += '<p><strong>Severidad:</strong> Alta ' + nAlta + ' · Media ' + nMed + ' · Baja ' + nBaja + '</p>';
+
+  // Desglose por fase
+  const faseKeys = Object.keys(porFase);
+  if (faseKeys.length) {
+    html += '<h2>Desglose por fase del proceso</h2><div class="fase-breakdown">';
+    faseKeys.sort((a,b) => porFase[b] - porFase[a]).forEach(k => {
+      html += '<div class="fase-item">' + escape(FASES[k]||k) + '<strong>' + porFase[k] + '</strong></div>';
+    });
+    html += '</div>';
+  }
+
+  // Proveedores implicados
+  const provKeys = Object.keys(proveedores);
+  if (provKeys.length) {
+    html += '<h2>Proveedores implicados</h2><ul>';
+    provKeys.sort((a,b) => proveedores[b] - proveedores[a]).forEach(p => {
+      html += '<li>' + escape(p) + ' — ' + proveedores[p] + ' entrada(s)</li>';
+    });
+    html += '</ul>';
+  }
+
+  // Críticas sin resolver
+  const altas = list.filter(e => e.sev === 'alta' && e.estado !== 'resuelta');
+  if (altas.length) {
+    html += '<h2>Puntos críticos sin resolver</h2><ul>';
+    altas.forEach(e => {
+      html += '<li><strong>[' + e.fecha + ' · ' + escape(FASES[e.fase]||e.fase) + ']</strong> ' + escape(e.desc) + (e.resp ? ' — ' + escape(e.resp) : '') + '</li>';
+    });
+    html += '</ul>';
+  }
+
+  html += '<h2>Cronología detallada</h2>';
+  fechas.forEach(f => {
+    html += '<div class="report-section"><h3>' + f + '</h3>';
+    byDate[f].forEach(e => {
+      const clone = incAtt ? e : Object.assign({}, e, { attachments: [] });
+      html += renderEntry(clone, false);
+    });
+    html += '</div>';
+  });
+
+  // Conclusiones automáticas
+  const pct = total ? Math.round(nRes/total*100) : 0;
+  let concl = 'Durante el periodo analizado se han registrado ' + total + ' entradas en el proyecto "' + escape(proc.name) + '"';
+  if (proc.client) concl += ' (cliente: ' + escape(proc.client) + ')';
+  concl += ': ' + nInc + ' incidencias, ' + nObs + ' observaciones y ' + nMej + ' propuestas de mejora. ';
+  if (faseKeys.length > 1) {
+    const faseTop = faseKeys.sort((a,b) => porFase[b] - porFase[a])[0];
+    concl += 'La fase con mayor concentración de entradas es <strong>' + escape(FASES[faseTop]||faseTop) + '</strong> (' + porFase[faseTop] + '). ';
+  }
+  if (nAlta > 0) concl += 'Se identificaron <strong>' + nAlta + ' entrada(s) de severidad alta</strong>. ';
+  concl += 'El ' + pct + '% están resueltas';
+  if (nAbi > 0) concl += ', ' + nAbi + ' permanecen abiertas';
+  if (nProg > 0) concl += ' y ' + nProg + ' en progreso';
+  concl += '.';
+  html += '<h2>Conclusiones</h2><p>' + concl + '</p></div>';
+
+  document.getElementById('report-output').innerHTML = html;
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'eba-incidencias-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function importJSON(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.processes && data.entries) {
+        if (confirm('¿Reemplazar datos actuales?')) {
+          state = data; save(); selectProcess(null); renderProcList();
+        }
+      }
+    } catch(err) { alert('Archivo inválido'); }
+  };
+  r.readAsText(f);
+}
+
+function wipeAll() {
+  if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  if (!confirm('Última confirmación: ¿seguro?')) return;
+  state = { processes: [], entries: [] };
+  currentProc = null;
+  save(); selectProcess(null);
+}
+
+function escape(s) {
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  ['procesos','registro','listado','informe','datos'].forEach(id => {
+    document.getElementById('tab-'+id).style.display = id === name ? 'block' : 'none';
+  });
+  if (name === 'listado') refreshEntriesList();
+  if (name === 'procesos') renderProcList();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => { if (!t.disabled) switchTab(t.dataset.tab); };
+});
+
+['filt-fase','filt-tipo','filt-estado','filt-sev','filt-text'].forEach(id => {
+  document.getElementById(id).addEventListener('input', refreshEntriesList);
+});
+
+load();
+</script>

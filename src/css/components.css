@@ -1,0 +1,20 @@
+/incident-management-system
+├── /client                  # Frontend code
+│   ├── /src
+│   │   ├── /components      # React components
+│   │   ├── /pages           # Page components
+│   │   ├── /redux           # Redux store and actions
+│   │   ├── /styles          # CSS styles
+│   │   └── App.js           # Main application file
+│   └── package.json         # Frontend dependencies
+├── /server                  # Backend code
+│   ├── /controllers         # API controllers
+│   ├── /models              # Database models
+│   ├── /routes              # API routes
+│   ├── /middleware           # Authentication middleware
+│   └── server.js            # Main server file
+├── /docs                    # Documentation (API, user guide)
+├── /tests                   # Test cases
+├── .gitignore               # Git ignore file
+├── README.md                # Project documentation
+└── package.json             # Project dependencies

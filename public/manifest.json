@@ -1,0 +1,11 @@
+{
+  "name": "EBA Gestor de Incidencias",
+  "short_name": "EBA Incidencias",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#D13B2E",
+  "description": "Gestión de incidencias de producto – EBA",
+  "lang": "es",
+  "icons": []
+}
