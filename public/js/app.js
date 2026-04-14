@@ -108,11 +108,18 @@ function getSyncProvider() {
   return SyncProvider[syncConfig.backend] || null;
 }
 
+// --- Auto-sync engine ---
+var _syncPushTimer = null;
+var _syncInterval = null;
+var _syncBusy = false;
+var SYNC_DEBOUNCE_MS = 2000;   // Wait 2s after last save before pushing
+var SYNC_POLL_MS = 60000;      // Poll remote every 60s
+
 function setSyncStatus(cls, text) {
   var el = document.getElementById('sync-indicator');
   if (!el) return;
   el.className = 'header-btn' + (cls ? ' sync-' + cls : '');
-  el.title = text || 'Sincronizar';
+  el.title = text || 'Sincronizacion automatica';
   el.style.display = syncConfig && syncConfig.backend ? '' : 'none';
   var st = document.getElementById('sync-status');
   if (st) st.textContent = text || '';
@@ -120,7 +127,8 @@ function setSyncStatus(cls, text) {
 
 function syncPush() {
   var provider = getSyncProvider();
-  if (!provider) return Promise.resolve();
+  if (!provider || _syncBusy) return Promise.resolve();
+  _syncBusy = true;
   setSyncStatus('syncing', 'Subiendo...');
   return provider.push(state, syncConfig).then(function(result) {
     if (result && result.gistId && !syncConfig.gistId) {
@@ -133,30 +141,58 @@ function syncPush() {
   }).catch(function(err) {
     setSyncStatus('error', 'Error: ' + err.message);
     console.error('Sync push error:', err);
-  });
+  }).then(function() { _syncBusy = false; });
 }
 
 function syncPull() {
   var provider = getSyncProvider();
-  if (!provider) return Promise.resolve();
+  if (!provider || _syncBusy) return Promise.resolve();
+  _syncBusy = true;
   setSyncStatus('syncing', 'Descargando...');
   return provider.pull(syncConfig).then(function(data) {
     if (data && data.processes && data.entries) {
-      state = data;
-      localStorage.setItem(APP_KEY, JSON.stringify(state));
-      renderAll();
-      setSyncStatus('ok', 'Datos descargados');
-      showToast('Datos sincronizados');
+      var localStr = JSON.stringify(state);
+      var remoteStr = JSON.stringify(data);
+      if (localStr !== remoteStr) {
+        state = data;
+        localStorage.setItem(APP_KEY, JSON.stringify(state));
+        renderAll();
+        setSyncStatus('ok', 'Datos actualizados');
+      } else {
+        setSyncStatus('ok', 'Sincronizado');
+      }
     }
   }).catch(function(err) {
     setSyncStatus('error', 'Error: ' + err.message);
     console.error('Sync pull error:', err);
-  });
+  }).then(function() { _syncBusy = false; });
 }
 
+// Debounced push: waits SYNC_DEBOUNCE_MS after last call
+function schedulePush() {
+  if (!getSyncProvider()) return;
+  clearTimeout(_syncPushTimer);
+  _syncPushTimer = setTimeout(syncPush, SYNC_DEBOUNCE_MS);
+}
+
+// Start/stop periodic background pull
+function startAutoSync() {
+  stopAutoSync();
+  if (!getSyncProvider()) return;
+  _syncInterval = setInterval(syncPull, SYNC_POLL_MS);
+}
+function stopAutoSync() { clearInterval(_syncInterval); _syncInterval = null; }
+
+// Sync when user returns to the app/tab
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && getSyncProvider()) syncPull();
+});
+// Sync when window regains focus (covers alt-tab, etc.)
+window.addEventListener('focus', function() {
+  if (getSyncProvider()) syncPull();
+});
+
 function manualSync() { syncPull(); }
-function manualPush() { syncPush(); }
-function manualPull() { syncPull(); }
 
 function toggleSyncConfig() {
   var sel = document.getElementById('sync-backend').value;
@@ -166,7 +202,11 @@ function toggleSyncConfig() {
 
 function saveSyncConfig() {
   var backend = document.getElementById('sync-backend').value;
-  if (!backend) { syncConfig = null; localStorage.removeItem(SYNC_KEY); setSyncStatus('', ''); showToast('Sincronizacion desactivada'); return; }
+  if (!backend) {
+    syncConfig = null; localStorage.removeItem(SYNC_KEY);
+    stopAutoSync(); setSyncStatus('', '');
+    showToast('Sincronizacion desactivada'); return;
+  }
   syncConfig = { backend: backend };
   if (backend === 'github') {
     var token = document.getElementById('sync-token').value.trim();
@@ -180,8 +220,8 @@ function saveSyncConfig() {
     syncConfig.serverToken = document.getElementById('sync-server-token').value.trim();
   }
   localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
-  showToast('Configuracion guardada');
-  syncPush();
+  showToast('Sincronizacion activada');
+  syncPush().then(function() { startAutoSync(); });
 }
 
 function loadSyncConfig() {
@@ -200,11 +240,11 @@ function loadSyncConfig() {
       if (gi) gi.value = syncConfig.gistId || '';
     } else if (syncConfig.backend === 'server') {
       var su = document.getElementById('sync-server-url');
-      var st = document.getElementById('sync-server-token');
+      var st2 = document.getElementById('sync-server-token');
       if (su) su.value = syncConfig.serverUrl || '';
-      if (st) st.value = syncConfig.serverToken || '';
+      if (st2) st2.value = syncConfig.serverToken || '';
     }
-    setSyncStatus('', 'Conectado');
+    setSyncStatus('ok', 'Auto-sync activo');
   }
 }
 
@@ -219,13 +259,17 @@ function load() {
   document.getElementById('f-fecha').value = today();
   loadSyncConfig();
   renderAll();
-  if (syncConfig && syncConfig.backend) syncPull();
+  // Auto-pull on load + start periodic sync
+  if (getSyncProvider()) {
+    syncPull();
+    startAutoSync();
+  }
 }
 
 function save() {
   try { localStorage.setItem(APP_KEY, JSON.stringify(state)); }
   catch (e) { alert('Error guardando: ' + e.message); }
-  syncPush();
+  schedulePush(); // debounced auto-push
 }
 
 function renderAll() {
