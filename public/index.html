@@ -150,10 +150,29 @@
         <select id="sync-backend" onchange="toggleSyncConfig()"><option value="">Desactivado</option><option value="github">GitHub (Gist privado)</option><option value="server">Servidor propio</option></select>
       </div>
       <div id="sync-github-config" style="display:none">
-        <div class="form-group"><label for="sync-token">Token de acceso (GitHub)</label><input id="sync-token" type="password" placeholder="ghp_xxxxxxxxxxxx" maxlength="200"></div>
-        <div class="form-group"><label for="sync-gist-id">Gist ID (se crea solo)</label><input id="sync-gist-id" type="text" placeholder="Se creara automaticamente" maxlength="100" readonly></div>
-        <button onclick="saveSyncConfig()">Activar sincronizacion</button>
-        <p style="font-size:11px;color:var(--hint);margin-top:8px;">Al guardar, los datos se suben y descargan automaticamente. Tambien se sincronizan al volver a la app.</p>
+        <div id="sync-github-wizard">
+          <div id="sync-wizard-step1">
+            <p style="font-size:13px;margin-bottom:10px;">Configuracion rapida (solo una vez):</p>
+            <ol style="font-size:13px;color:var(--ink);padding-left:20px;margin-bottom:12px;line-height:1.8;">
+              <li>Haz clic en el boton de abajo para abrir GitHub</li>
+              <li>Inicia sesion si no lo estas</li>
+              <li>Haz clic en <strong>"Generate token"</strong> (no cambies nada)</li>
+              <li>Copia el token que aparece y pegalo aqui abajo</li>
+            </ol>
+            <button onclick="window.open('https://github.com/settings/tokens/new?scopes=gist&amp;description=EBA+Gestor+Incidencias','_blank')" style="background:var(--surface-hover);color:var(--ink);margin-bottom:12px;">Abrir GitHub para crear token</button>
+            <div class="form-group"><label for="sync-token">Pega aqui el token</label><input id="sync-token" type="password" placeholder="ghp_xxxxxxxxxxxx" maxlength="200"></div>
+            <button onclick="saveSyncConfig()">Conectar</button>
+          </div>
+          <div id="sync-wizard-done" style="display:none">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:20px;">&#9989;</span>
+              <span style="font-size:14px;font-weight:600;color:var(--ink);">Sincronizacion activa</span>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Los datos se sincronizan automaticamente.</p>
+            <div class="form-group"><label>Gist ID</label><input id="sync-gist-id" type="text" readonly style="font-size:11px;color:var(--hint);"></div>
+            <button onclick="disconnectSync()" style="background:var(--surface-hover);color:var(--danger);font-size:12px;">Desconectar</button>
+          </div>
+        </div>
       </div>
       <div id="sync-server-config" style="display:none">
         <div class="form-group"><label for="sync-server-url">URL del servidor</label><input id="sync-server-url" type="url" placeholder="https://servidor.empresa.com/api" maxlength="500"></div>

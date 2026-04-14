@@ -133,9 +133,8 @@ function syncPush() {
   return provider.push(state, syncConfig).then(function(result) {
     if (result && result.gistId && !syncConfig.gistId) {
       syncConfig.gistId = result.gistId;
-      var gistEl = document.getElementById('sync-gist-id');
-      if (gistEl) gistEl.value = result.gistId;
       localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
+      updateSyncWizardUI();
     }
     setSyncStatus('ok', 'Sincronizado');
   }).catch(function(err) {
@@ -212,7 +211,8 @@ function saveSyncConfig() {
     var token = document.getElementById('sync-token').value.trim();
     if (!token) { alert('Introduce el token de GitHub'); return; }
     syncConfig.token = token;
-    syncConfig.gistId = document.getElementById('sync-gist-id').value.trim() || null;
+    var gi = document.getElementById('sync-gist-id');
+    syncConfig.gistId = (gi && gi.value.trim()) || null;
   } else if (backend === 'server') {
     var url = document.getElementById('sync-server-url').value.trim();
     if (!url) { alert('Introduce la URL del servidor'); return; }
@@ -221,7 +221,35 @@ function saveSyncConfig() {
   }
   localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
   showToast('Sincronizacion activada');
-  syncPush().then(function() { startAutoSync(); });
+  syncPush().then(function() {
+    startAutoSync();
+    updateSyncWizardUI();
+  });
+}
+
+function disconnectSync() {
+  if (!confirm('Desconectar sincronizacion?')) return;
+  syncConfig = null;
+  localStorage.removeItem(SYNC_KEY);
+  stopAutoSync();
+  setSyncStatus('', '');
+  document.getElementById('sync-backend').value = '';
+  toggleSyncConfig();
+  updateSyncWizardUI();
+  showToast('Sincronizacion desconectada');
+}
+
+function updateSyncWizardUI() {
+  var step1 = document.getElementById('sync-wizard-step1');
+  var done = document.getElementById('sync-wizard-done');
+  if (!step1 || !done) return;
+  var connected = syncConfig && syncConfig.backend === 'github' && syncConfig.token;
+  step1.style.display = connected ? 'none' : 'block';
+  done.style.display = connected ? 'block' : 'none';
+  if (connected) {
+    var gi = document.getElementById('sync-gist-id');
+    if (gi) gi.value = syncConfig.gistId || 'Creando...';
+  }
 }
 
 function loadSyncConfig() {
@@ -235,9 +263,8 @@ function loadSyncConfig() {
     toggleSyncConfig();
     if (syncConfig.backend === 'github') {
       var tk = document.getElementById('sync-token');
-      var gi = document.getElementById('sync-gist-id');
       if (tk) tk.value = syncConfig.token || '';
-      if (gi) gi.value = syncConfig.gistId || '';
+      updateSyncWizardUI();
     } else if (syncConfig.backend === 'server') {
       var su = document.getElementById('sync-server-url');
       var st2 = document.getElementById('sync-server-token');
