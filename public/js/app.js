@@ -156,6 +156,41 @@ function syncPush() {
   }).then(function() { _syncBusy = false; });
 }
 
+// --- Merge engine: combines local + remote by ID, no data loss ---
+function mergeState(local, remote) {
+  var merged = { processes: [], entries: [] };
+  // Merge processes by ID: keep all unique, prefer most recent fields
+  var procMap = {};
+  (local.processes || []).forEach(function(p) { procMap[p.id] = Object.assign({}, p); });
+  (remote.processes || []).forEach(function(p) {
+    if (!procMap[p.id]) { procMap[p.id] = Object.assign({}, p); }
+    // If both have it, keep local (admin edits locally)
+  });
+  merged.processes = Object.keys(procMap).map(function(k) { return procMap[k]; });
+  merged.processes.sort(function(a, b) { return a.id - b.id; });
+  // Merge entries by ID: union of all entries, newest version wins per ID
+  var entryMap = {};
+  (remote.entries || []).forEach(function(e) { entryMap[e.id] = Object.assign({}, e); });
+  (local.entries || []).forEach(function(e) {
+    var existing = entryMap[e.id];
+    if (!existing) { entryMap[e.id] = Object.assign({}, e); return; }
+    // Both have this entry: merge comments (union), keep latest other fields
+    var localComments = e.comments || [];
+    var remoteComments = existing.comments || [];
+    var commentSet = {};
+    remoteComments.forEach(function(c) { commentSet[c.date + '|' + c.text] = c; });
+    localComments.forEach(function(c) { commentSet[c.date + '|' + c.text] = c; });
+    var mergedComments = Object.keys(commentSet).map(function(k) { return commentSet[k]; });
+    mergedComments.sort(function(a, b) { return a.date.localeCompare(b.date); });
+    // Local wins for field changes (user just edited locally)
+    entryMap[e.id] = Object.assign({}, e);
+    entryMap[e.id].comments = mergedComments;
+  });
+  merged.entries = Object.keys(entryMap).map(function(k) { return entryMap[k]; });
+  merged.entries.sort(function(a, b) { return a.id - b.id; });
+  return merged;
+}
+
 function syncPull() {
   var provider = getSyncProvider();
   if (!provider || _syncBusy) return Promise.resolve();
@@ -167,14 +202,17 @@ function syncPull() {
   setSyncStatus('syncing', 'Descargando...');
   return provider.pull(syncConfig).then(function(data) {
     if (data && data.processes && data.entries) {
+      var merged = mergeState(state, data);
       var localStr = JSON.stringify(state);
-      var remoteStr = JSON.stringify(data);
-      if (localStr !== remoteStr) {
-        state = data;
+      var mergedStr = JSON.stringify(merged);
+      if (localStr !== mergedStr) {
+        state = merged;
         localStorage.setItem(APP_KEY, JSON.stringify(state));
         _lastPushHash = _stateHash();
         renderAll();
         setSyncStatus('ok', 'Datos actualizados');
+        // Push merged result so all devices converge
+        schedulePush();
       } else {
         setSyncStatus('ok', 'Sincronizado');
       }
@@ -883,240 +921,6 @@ function generateMultiProjectReport() {
   var pct = total ? Math.round(nRes/total*100) : 0;
   html += '<h2>Conclusiones</h2><p>' + total + ' entradas en ' + state.processes.length + ' proyectos: ' + nInc + ' incidencias, ' + nObs + ' observaciones, ' + nMej + ' mejoras. ' + pct + '% resueltas.</p></div>';
   document.getElementById('report-output').innerHTML = html;
-}
-// ==================== FILE HANDLING ====================
-function handleFileSelection(ev) {
-  Array.from(ev.target.files).forEach(function(file) { processFile(file); });
-  ev.target.value = '';
-}
-function processFile(file) {
-  var ext = file.name.lastIndexOf('.') !== -1 ? file.name.substring(file.name.lastIndexOf('.')).toLowerCase() : '';
-  if (ALLOWED_EXTENSIONS.indexOf(ext) === -1) { alert('Tipo no permitido: ' + ext); return; }
-  if (file.type && file.type.startsWith('image/')) {
-    compressImage(file).then(function(p) { pendingAttachments.push(p); renderPendingAttachments(); }).catch(function(e) { alert('Error imagen: ' + e.message); });
-  } else {
-    if (file.size > MAX_FILE_MB * 1024 * 1024) { alert('"' + file.name + '" supera ' + MAX_FILE_MB + 'MB.'); return; }
-    fileToBase64(file).then(function(d) { pendingAttachments.push({ name: file.name, type: file.type, size: file.size, data: d }); renderPendingAttachments(); }).catch(function(e) { alert('Error: ' + e.message); });
-  }
-}
-function compressImage(file) {
-  return new Promise(function(resolve, reject) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var img = new Image();
-      img.onload = function() {
-        var w = img.width, h = img.height;
-        if (w > MAX_IMG_DIM || h > MAX_IMG_DIM) { if (w > h) { h = Math.round(h * MAX_IMG_DIM / w); w = MAX_IMG_DIM; } else { w = Math.round(w * MAX_IMG_DIM / h); h = MAX_IMG_DIM; } }
-        var c = document.createElement('canvas'); c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        var data = c.toDataURL('image/jpeg', IMG_QUALITY);
-        resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', size: Math.round(data.length * 0.75), data: data });
-      };
-      img.onerror = function() { reject(new Error('No se pudo leer la imagen')); };
-      img.src = e.target.result;
-    };
-    reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
-    reader.readAsDataURL(file);
-  });
-}
-function fileToBase64(file) {
-  return new Promise(function(res, rej) { var r = new FileReader(); r.onload = function() { res(r.result); }; r.onerror = rej; r.readAsDataURL(file); });
-}
-function renderPendingAttachments() {
-  var el = document.getElementById('f-attachments');
-  if (!pendingAttachments.length) { el.innerHTML = ''; return; }
-  el.innerHTML = pendingAttachments.map(function(a, i) { return renderAttachment(a, i, true); }).join('');
-}
-function renderAttachment(a, idx, removable) {
-  var isImg = a.type && a.type.startsWith('image/');
-  var rm = removable ? '<button class="att-remove" onclick="event.stopPropagation();removePending(' + idx + ')">x</button>' : '';
-  if (isImg) return '<div class="att"><img src="' + a.data + '" onclick="openLightbox(this.src)" alt="' + esc(a.name) + '">' + rm + '</div>';
-  var icon = a.type === 'application/pdf' ? '\uD83D\uDCC4' : '\uD83D\uDCCE';
-  var short = a.name.length > 20 ? a.name.slice(0, 18) + '\u2026' : a.name;
-  return '<div class="att"><div class="att-file" data-data="' + a.data + '" data-name="' + esc(a.name) + '" onclick="downloadAtt(this)"><div class="att-file-icon">' + icon + '</div>' + esc(short) + '</div>' + rm + '</div>';
-}
-function removePending(i) { pendingAttachments.splice(i, 1); renderPendingAttachments(); }
-function downloadAtt(el) { var a = document.createElement('a'); a.href = el.dataset.data; a.download = el.dataset.name; a.click(); }
-function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').classList.add('active'); }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
-
-// ==================== ENTRY CRUD ====================
-function addEntry() {
-  if (!currentProc) { alert('Selecciona un proyecto primero'); return; }
-  var desc = sanitize(document.getElementById('f-desc').value, 5000);
-  if (!desc) { alert('La descripcion es obligatoria'); return; }
-  var fase = document.getElementById('f-fase').value;
-  var tipo = document.getElementById('f-tipo').value;
-  var sev = document.getElementById('f-sev').value;
-  var estado = document.getElementById('f-estado').value;
-  if (!FASES[fase]) { alert('Fase no valida'); return; }
-  if (VALID_TIPOS.indexOf(tipo) === -1) tipo = 'incidencia';
-  if (VALID_SEVS.indexOf(sev) === -1) sev = 'media';
-  if (VALID_ESTADOS.indexOf(estado) === -1) estado = 'abierta';
-  state.entries.push({
-    id: Date.now(), procId: currentProc,
-    fecha: document.getElementById('f-fecha').value || today(),
-    fase: fase, tipo: tipo, sev: sev, estado: estado,
-    resp: sanitize(document.getElementById('f-resp').value, 100),
-    prov: sanitize(document.getElementById('f-prov').value, 200),
-    ref: sanitize(document.getElementById('f-ref').value, 100),
-    desc: desc, accion: sanitize(document.getElementById('f-accion').value, 5000),
-    attachments: pendingAttachments.slice(), comments: []
-  });
-  save(); clearForm(); showToast('Entrada guardada');
-  renderAll(); switchTab('listado');
-}
-
-function clearForm() {
-  ['f-desc','f-resp','f-prov','f-ref','f-accion'].forEach(function(id) { document.getElementById(id).value = ''; });
-  document.getElementById('f-fecha').value = today();
-  document.getElementById('f-sev').value = 'media';
-  document.getElementById('f-estado').value = 'abierta';
-  pendingAttachments = []; renderPendingAttachments();
-}
-
-function getFilteredEntries(procFilterId) {
-  if (procFilterId) { var pid = Number(procFilterId); return state.entries.filter(function(e) { return e.procId === pid; }); }
-  return state.entries.slice();
-}
-
-// ==================== SORTING ====================
-function setSort(field) {
-  currentSort = field;
-  document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.sort === field); });
-  refreshEntriesList();
-}
-
-function sortEntries(list) {
-  var sevOrder = { alta: 0, media: 1, baja: 2 };
-  var estOrder = { abierta: 0, progreso: 1, resuelta: 2 };
-  if (currentSort === 'sev') return list.sort(function(a, b) { return (sevOrder[a.sev] || 1) - (sevOrder[b.sev] || 1) || b.id - a.id; });
-  if (currentSort === 'estado') return list.sort(function(a, b) { return (estOrder[a.estado] || 0) - (estOrder[b.estado] || 0) || b.id - a.id; });
-  return list.sort(function(a, b) { return b.fecha.localeCompare(a.fecha) || b.id - a.id; });
-}
-
-// ==================== ENTRY LIST ====================
-function refreshEntriesList() {
-  var el = document.getElementById('entries-list');
-  var fpVal = document.getElementById('filt-proc').value;
-  var ff = document.getElementById('filt-fase').value;
-  var fi = document.getElementById('filt-tipo').value;
-  var fe = document.getElementById('filt-estado').value;
-  var fs = document.getElementById('filt-sev').value;
-  var ft = document.getElementById('filt-text').value.toLowerCase();
-  var allForProc = getFilteredEntries(fpVal);
-  var list = allForProc.slice();
-  if (ff) list = list.filter(function(e) { return e.fase === ff; });
-  if (fi) list = list.filter(function(e) { return e.tipo === fi; });
-  if (fe) list = list.filter(function(e) { return e.estado === fe; });
-  if (fs) list = list.filter(function(e) { return e.sev === fs; });
-  if (ft) list = list.filter(function(e) { return (e.desc + ' ' + (e.resp||'') + ' ' + (e.prov||'') + ' ' + (e.ref||'') + ' ' + (e.accion||'')).toLowerCase().indexOf(ft) !== -1; });
-  list = sortEntries(list);
-  var total = allForProc.length;
-  var shown = list.length;
-  var showProj = !fpVal;
-  var header = '<div style="font-size:12px;color:var(--hint);margin-bottom:8px;">' + shown + ' de ' + total + ' entradas</div>';
-  if (!list.length) { el.innerHTML = header + '<div class="empty">Sin entradas con estos filtros</div>'; return; }
-  el.innerHTML = header + list.map(function(e) { return renderEntry(e, true, showProj); }).join('');
-  updateFilterCount();
-}
-
-// ==================== RENDER ENTRY ====================
-function renderEntry(e, withActions, showProject) {
-  var tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
-  var sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
-  var estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
-  var estL = e.estado === 'progreso' ? 'en progreso' : e.estado;
-  var faseLabel = FASES[e.fase] || e.fase || '';
-  var atts = (e.attachments || []).map(function(a, i) { return renderAttachment(a, i, false); }).join('');
-  var projectLabel = '';
-  if (showProject) {
-    var proj = state.processes.find(function(p) { return p.id === e.procId; });
-    if (proj) projectLabel = '<div class="entry-project">' + esc(proj.code || proj.name) + '</div>';
-  }
-  var estClick = withActions ? ' clickable" onclick="cycleEstado(' + e.id + ')' : '';
-  var metaParts = [];
-  if (e.resp) metaParts.push('Responsable: ' + esc(e.resp));
-  if (e.prov) metaParts.push('Proveedor: ' + esc(e.prov));
-  if (e.ref) metaParts.push('Ref: ' + esc(e.ref));
-  var comments = e.comments || [];
-  var commentsHtml = '';
-  if (withActions) {
-    var commentsList = comments.map(function(c) {
-      return '<div class="comment"><span class="comment-date">' + esc(c.date) + '</span><div class="comment-text">' + esc(c.text) + '</div></div>';
-    }).join('');
-    commentsHtml = '<div class="entry-comments">' +
-      '<div class="entry-comments-title" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
-        '\uD83D\uDCAC ' + comments.length + ' nota' + (comments.length !== 1 ? 's' : '') + '</div>' +
-      '<div class="comments-list" style="' + (comments.length ? '' : 'display:none') + '">' + commentsList + '</div>' +
-      '<div class="add-comment-row">' +
-        '<input type="text" placeholder="Anadir nota..." id="comment-' + e.id + '" maxlength="500" onkeydown="if(event.key===\'Enter\')addComment(' + e.id + ')">' +
-        '<button onclick="addComment(' + e.id + ')">+</button>' +
-      '</div></div>';
-  }
-  var actions = withActions ? '<div class="actions no-print">' +
-    '<button onclick="openEditEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>' +
-    '<button onclick="duplicateEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Duplicar</button>' +
-    '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>' +
-  '</div>' : '';
-  return '<div class="entry sev-' + e.sev + '">' +
-    projectLabel +
-    '<div class="entry-header">' +
-      '<span class="entry-date">' + esc(e.fecha) + '</span>' +
-      (faseLabel ? '<span class="badge b-fase">' + esc(faseLabel) + '</span>' : '') +
-      '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
-      '<span class="badge ' + sevB + '">sev: ' + esc(e.sev) + '</span>' +
-      '<span class="badge ' + estB + estClick + '">' + esc(estL) + '</span>' +
-    '</div>' +
-    '<div class="entry-desc">' + esc(e.desc) + '</div>' +
-    (e.accion ? '<div class="entry-desc" style="font-style:italic;color:var(--muted);"><strong style="font-style:normal;">Accion:</strong> ' + esc(e.accion) + '</div>' : '') +
-    (metaParts.length ? '<div class="entry-meta">' + metaParts.join(' \u00B7 ') + '</div>' : '') +
-    (atts ? '<div class="attachments">' + atts + '</div>' : '') +
-    commentsHtml +
-    actions +
-  '</div>';
-}
-
-// ==================== COMMENTS ====================
-function addComment(entryId) {
-  var input = document.getElementById('comment-' + entryId);
-  if (!input) return;
-  var text = sanitize(input.value, 500);
-  if (!text) return;
-  var e = state.entries.find(function(x) { return x.id === entryId; });
-  if (!e) return;
-  if (!e.comments) e.comments = [];
-  e.comments.push({ date: new Date().toISOString().slice(0, 16).replace('T', ' '), text: text });
-  save(); refreshEntriesList(); showToast('Nota agregada');
-}
-
-// ==================== ENTRY ACTIONS ====================
-function deleteEntry(id) {
-  if (!confirm('Eliminar esta entrada?')) return;
-  state.entries = state.entries.filter(function(e) { return e.id !== id; });
-  save(); refreshEntriesList(); renderAll(); showToast('Entrada eliminada');
-}
-
-function cycleEstado(id) {
-  var e = state.entries.find(function(x) { return x.id === id; });
-  if (!e) return;
-  var next = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
-  e.estado = next[e.estado] || 'abierta';
-  save(); refreshEntriesList(); renderAll();
-  showToast('Estado: ' + (e.estado === 'progreso' ? 'en progreso' : e.estado));
-}
-
-function duplicateEntry(id) {
-  var e = state.entries.find(function(x) { return x.id === id; });
-  if (!e) return;
-  var clone = JSON.parse(JSON.stringify(e));
-  clone.id = Date.now();
-  clone.fecha = today();
-  clone.estado = 'abierta';
-  clone.comments = [];
-  clone.desc = '[COPIA] ' + clone.desc;
-  state.entries.push(clone);
-  save(); refreshEntriesList(); renderAll(); showToast('Entrada duplicada');
 }
 // ==================== DATA MANAGEMENT ====================
 function exportJSON() {

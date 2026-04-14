@@ -1,5 +1,5 @@
-const CACHE_NAME = 'eba-incidencias-v2';
-const URLS_TO_CACHE = [
+var CACHE_NAME = 'eba-incidencias-v3';
+var URLS_TO_CACHE = [
   './',
   './index.html',
   './css/styles.css',
@@ -28,10 +28,24 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
+// Network-first: try network, fall back to cache (works offline, always gets latest)
 self.addEventListener('fetch', function(event) {
+  // Skip non-GET and cross-origin requests
+  if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
   event.respondWith(
-    caches.match(event.request).then(function(cached) {
-      return cached || fetch(event.request);
+    fetch(event.request).then(function(response) {
+      // Update cache with fresh response
+      if (response.ok) {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, clone);
+        });
+      }
+      return response;
+    }).catch(function() {
+      // Network failed, serve from cache (offline support)
+      return caches.match(event.request);
     })
   );
 });

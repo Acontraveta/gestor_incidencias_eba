@@ -5,7 +5,14 @@
   "display": "standalone",
   "background_color": "#fafaf7",
   "theme_color": "#D13B2E",
-  "description": "Gestión de incidencias de producto – EBA",
+  "description": "Gestion de incidencias de producto - EBA",
   "lang": "es",
-  "icons": []
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
