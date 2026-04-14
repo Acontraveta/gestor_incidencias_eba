@@ -112,8 +112,11 @@ function getSyncProvider() {
 var _syncPushTimer = null;
 var _syncInterval = null;
 var _syncBusy = false;
-var SYNC_DEBOUNCE_MS = 1000;   // Wait 1s after last save before pushing
-var SYNC_POLL_MS = 10000;      // Poll remote every 10s
+var _lastPushHash = '';
+var _lastPullTime = 0;
+var SYNC_DEBOUNCE_MS = 1500;   // Wait 1.5s after last save before pushing
+var SYNC_POLL_MS = 30000;      // Poll remote every 30s when tab is visible
+var SYNC_PULL_COOLDOWN = 5000; // Min 5s between pulls (prevents spam on tab switch)
 
 function setSyncStatus(cls, text) {
   var el = document.getElementById('sync-indicator');
@@ -125,12 +128,22 @@ function setSyncStatus(cls, text) {
   if (st) st.textContent = text || '';
 }
 
+function _stateHash() {
+  return String(state.processes.length) + ':' + String(state.entries.length) + ':' +
+    (state.entries.length ? state.entries[state.entries.length - 1].id : 0) + ':' +
+    (state.entries.length ? state.entries.reduce(function(s, e) { return s + e.estado; }, '') : '');
+}
+
 function syncPush() {
   var provider = getSyncProvider();
   if (!provider || _syncBusy) return Promise.resolve();
+  // Skip push if nothing changed since last push
+  var hash = _stateHash();
+  if (hash === _lastPushHash) { setSyncStatus('ok', 'Sincronizado'); return Promise.resolve(); }
   _syncBusy = true;
   setSyncStatus('syncing', 'Subiendo...');
   return provider.push(state, syncConfig).then(function(result) {
+    _lastPushHash = hash;
     if (result && result.gistId && !syncConfig.gistId) {
       syncConfig.gistId = result.gistId;
       localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
@@ -146,6 +159,10 @@ function syncPush() {
 function syncPull() {
   var provider = getSyncProvider();
   if (!provider || _syncBusy) return Promise.resolve();
+  // Cooldown: skip if pulled recently
+  var now = Date.now();
+  if (now - _lastPullTime < SYNC_PULL_COOLDOWN) return Promise.resolve();
+  _lastPullTime = now;
   _syncBusy = true;
   setSyncStatus('syncing', 'Descargando...');
   return provider.pull(syncConfig).then(function(data) {
@@ -155,6 +172,7 @@ function syncPull() {
       if (localStr !== remoteStr) {
         state = data;
         localStorage.setItem(APP_KEY, JSON.stringify(state));
+        _lastPushHash = _stateHash();
         renderAll();
         setSyncStatus('ok', 'Datos actualizados');
       } else {
@@ -174,11 +192,13 @@ function schedulePush() {
   _syncPushTimer = setTimeout(syncPush, SYNC_DEBOUNCE_MS);
 }
 
-// Start/stop periodic background pull
+// Start/stop periodic background pull (only when tab visible)
 function startAutoSync() {
   stopAutoSync();
   if (!getSyncProvider()) return;
-  _syncInterval = setInterval(syncPull, SYNC_POLL_MS);
+  _syncInterval = setInterval(function() {
+    if (!document.hidden) syncPull();
+  }, SYNC_POLL_MS);
 }
 function stopAutoSync() { clearInterval(_syncInterval); _syncInterval = null; }
 
