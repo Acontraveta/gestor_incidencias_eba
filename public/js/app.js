@@ -112,8 +112,8 @@ function getSyncProvider() {
 var _syncPushTimer = null;
 var _syncInterval = null;
 var _syncBusy = false;
-var SYNC_DEBOUNCE_MS = 2000;   // Wait 2s after last save before pushing
-var SYNC_POLL_MS = 60000;      // Poll remote every 60s
+var SYNC_DEBOUNCE_MS = 1000;   // Wait 1s after last save before pushing
+var SYNC_POLL_MS = 10000;      // Poll remote every 10s
 
 function setSyncStatus(cls, text) {
   var el = document.getElementById('sync-indicator');
@@ -1232,6 +1232,7 @@ function switchTab(name) {
   if (name === 'informe') populateProjectFilters();
   if (name === 'procesos') { renderProcList(); renderDashboard(); }
   updateFab();
+  if (getSyncProvider()) syncPull();
 }
 
 // ==================== INIT ====================
