@@ -224,6 +224,7 @@ function saveSyncConfig() {
   syncPush().then(function() {
     startAutoSync();
     updateSyncWizardUI();
+    updateSyncBanner();
   });
 }
 
@@ -236,6 +237,7 @@ function disconnectSync() {
   document.getElementById('sync-backend').value = '';
   toggleSyncConfig();
   updateSyncWizardUI();
+  updateSyncBanner();
   showToast('Sincronizacion desconectada');
 }
 
@@ -249,14 +251,63 @@ function updateSyncWizardUI() {
   if (connected) {
     var gi = document.getElementById('sync-gist-id');
     if (gi) gi.value = syncConfig.gistId || 'Creando...';
+    generateShareURL();
   }
 }
 
-function loadSyncConfig() {
+function generateShareURL() {
+  var el = document.getElementById('sync-share-url');
+  if (!el || !syncConfig || !syncConfig.token) return;
+  var cfg = { b: syncConfig.backend, t: syncConfig.token, g: syncConfig.gistId || '' };
+  var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  var base = location.href.split('?')[0].split('#')[0];
+  el.value = base + '?sync=' + encoded;
+}
+
+function copyShareLink() {
+  var el = document.getElementById('sync-share-url');
+  if (!el || !el.value) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(el.value).then(function() { showToast('Enlace copiado'); });
+  } else {
+    el.select(); document.execCommand('copy'); showToast('Enlace copiado');
+  }
+}
+
+function applyConfigFromURL() {
+  var params = new URLSearchParams(location.search);
+  var syncParam = params.get('sync');
+  if (!syncParam) return false;
   try {
-    var raw = localStorage.getItem(SYNC_KEY);
-    if (raw) syncConfig = JSON.parse(raw);
-  } catch (e) { syncConfig = null; }
+    var cfg = JSON.parse(decodeURIComponent(escape(atob(syncParam))));
+    if (!cfg.b || !cfg.t) return false;
+    syncConfig = { backend: cfg.b, token: cfg.t, gistId: cfg.g || null };
+    if (cfg.b === 'server') { syncConfig.serverUrl = cfg.u || ''; syncConfig.serverToken = cfg.t; }
+    localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
+    // Clean URL without reloading
+    history.replaceState(null, '', location.pathname);
+    return true;
+  } catch (e) { console.error('Invalid sync URL param:', e); return false; }
+}
+
+function updateSyncBanner() {
+  var banner = document.getElementById('sync-auto-banner');
+  var admin = document.getElementById('sync-admin-section');
+  if (!banner || !admin) return;
+  var fromURL = syncConfig && syncConfig._fromURL;
+  // Always show admin section so admin can manage; show banner when connected
+  banner.style.display = (syncConfig && syncConfig.backend) ? 'block' : 'none';
+}
+
+function loadSyncConfig() {
+  // First check URL params (shared link)
+  var fromURL = applyConfigFromURL();
+  if (!fromURL) {
+    try {
+      var raw = localStorage.getItem(SYNC_KEY);
+      if (raw) syncConfig = JSON.parse(raw);
+    } catch (e) { syncConfig = null; }
+  }
   if (syncConfig) {
     var sel = document.getElementById('sync-backend');
     if (sel) sel.value = syncConfig.backend || '';
@@ -272,6 +323,7 @@ function loadSyncConfig() {
       if (st2) st2.value = syncConfig.serverToken || '';
     }
     setSyncStatus('ok', 'Auto-sync activo');
+    updateSyncBanner();
   }
 }
 
