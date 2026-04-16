@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=4">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="app-header no-print">
@@ -278,11 +278,21 @@
     </div>
   </div>
   <div id="app-toast" class="toast"></div>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js"></script>
   <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(function(e) {
+    navigator.serviceWorker.register('service-worker.js').then(function(reg) {
+      // Check for updates every 60s
+      setInterval(function() { reg.update(); }, 60000);
+    }).catch(function(e) {
       console.log('SW registration failed:', e);
+    });
+    // When SW sends update message, reload page automatically
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'SW_UPDATED') {
+        console.log('New version detected:', event.data.version);
+        location.reload();
+      }
     });
   }
   </script>

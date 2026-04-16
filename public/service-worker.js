@@ -1,4 +1,4 @@
-var CACHE_NAME = 'eba-incidencias-v4';
+var CACHE_NAME = 'eba-incidencias-v5';
 var URLS_TO_CACHE = [
   './',
   './index.html',
@@ -23,6 +23,13 @@ self.addEventListener('activate', function(event) {
         names.filter(function(n) { return n !== CACHE_NAME; })
           .map(function(n) { return caches.delete(n); })
       );
+    }).then(function() {
+      // Tell all open tabs to reload with the new version
+      return self.clients.matchAll({ type: 'window' }).then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+      });
     })
   );
   self.clients.claim();
