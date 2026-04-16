@@ -636,12 +636,16 @@ button.danger:hover { background: var(--eba-light); }
 .detail-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
-  display: none; align-items: flex-end; justify-content: center;
+  display: flex; align-items: flex-end; justify-content: center;
   z-index: 998; padding: 0;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, visibility 0.2s;
 }
-.detail-overlay.active { display: flex; }
+.detail-overlay.active { visibility: visible; opacity: 1; pointer-events: auto; }
 .detail-panel {
   background: var(--surface);
   width: 100%; max-width: 640px;
@@ -776,14 +780,18 @@ button.danger:hover { background: var(--eba-light); }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
-  display: none;
+  display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 999;
   padding: 0;
   backdrop-filter: blur(4px);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, visibility 0.2s;
 }
-.edit-overlay.active { display: flex; }
+.edit-overlay.active { visibility: visible; opacity: 1; pointer-events: auto; }
 .edit-panel {
   background: var(--surface);
   width: 100%;
