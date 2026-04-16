@@ -20,9 +20,13 @@ var state = { processes: [], entries: [] };
 var currentProc = null;
 var pendingAttachments = [];
 var editingEntryId = null;
-var currentSort = 'fecha';
+var currentSort = localStorage.getItem('eba-sort') || 'fecha';
 var syncConfig = null;
 var userRole = 'admin'; // 'admin' or 'basico'
+var _lastSyncTime = 0;
+var _autoBackupKey = 'eba-autobackup-last';
+var _savedFiltersKey = 'eba-saved-filters';
+var _knownEntryIds = {};
 
 function isAdmin() { return userRole === 'admin'; }
 
@@ -129,7 +133,25 @@ function setSyncStatus(cls, text) {
   el.style.display = syncConfig && syncConfig.backend ? '' : 'none';
   var st = document.getElementById('sync-status');
   if (st) st.textContent = text || '';
+  if (cls === 'ok') {
+    _lastSyncTime = Date.now();
+    updateLastSyncLabel();
+  }
 }
+
+function updateLastSyncLabel() {
+  var el = document.getElementById('last-sync-label');
+  if (!el) return;
+  if (!_lastSyncTime || !syncConfig) { el.textContent = ''; return; }
+  var diff = Math.round((Date.now() - _lastSyncTime) / 1000);
+  var txt;
+  if (diff < 10) txt = 'ahora';
+  else if (diff < 60) txt = diff + 's';
+  else if (diff < 3600) txt = Math.floor(diff / 60) + 'min';
+  else txt = Math.floor(diff / 3600) + 'h';
+  el.textContent = 'Sync: ' + txt;
+}
+setInterval(updateLastSyncLabel, 15000);
 
 function _stateHash() {
   return String(state.processes.length) + ':' + String(state.entries.length) + ':' +
@@ -209,11 +231,14 @@ function syncPull() {
       var localStr = JSON.stringify(state);
       var mergedStr = JSON.stringify(merged);
       if (localStr !== mergedStr) {
+        var oldIds = {};
+        for (var k in _knownEntryIds) oldIds[k] = true;
         state = merged;
         localStorage.setItem(APP_KEY, JSON.stringify(state));
         _lastPushHash = _stateHash();
         renderAll();
         setSyncStatus('ok', 'Datos actualizados');
+        checkNewEntriesAfterSync(oldIds);
         // Push merged result so all devices converge
         schedulePush();
       } else {
@@ -503,6 +528,21 @@ function renderDashboard() {
   var critical = state.entries.filter(function(e) { return e.sev === 'alta' && e.estado !== 'resuelta'; }).length;
   var projects = state.processes.length;
   if (!total && !projects) { el.innerHTML = ''; return; }
+  // Period comparison: this month vs last month
+  var now = new Date();
+  var thisM = now.toISOString().slice(0, 7); // YYYY-MM
+  var lastD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  var lastM = lastD.toISOString().slice(0, 7);
+  var thisCount = state.entries.filter(function(e) { return e.fecha && e.fecha.slice(0, 7) === thisM; }).length;
+  var lastCount = state.entries.filter(function(e) { return e.fecha && e.fecha.slice(0, 7) === lastM; }).length;
+  var trend = '';
+  if (lastCount > 0) {
+    var diff = thisCount - lastCount;
+    var pct = Math.round(Math.abs(diff) / lastCount * 100);
+    if (diff > 0) trend = '<span class="trend-up">&#9650; +' + pct + '%</span>';
+    else if (diff < 0) trend = '<span class="trend-down">&#9660; -' + pct + '%</span>';
+    else trend = '<span class="trend-flat">=</span>';
+  }
   el.innerHTML = '<div class="dashboard-title"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>Panel de estado</div>' +
     '<div class="dash-row">' +
       '<div class="dash-stat info"><div class="dash-stat-value">' + projects + '</div><div class="dash-stat-label">Proyectos</div></div>' +
@@ -511,6 +551,11 @@ function renderDashboard() {
       '<div class="dash-stat info"><div class="dash-stat-value">' + prog + '</div><div class="dash-stat-label">En progreso</div></div>' +
       '<div class="dash-stat success"><div class="dash-stat-value">' + solved + '</div><div class="dash-stat-label">Resueltas</div></div>' +
       '<div class="dash-stat critical"><div class="dash-stat-value">' + critical + '</div><div class="dash-stat-label">Criticas</div></div>' +
+    '</div>' +
+    '<div class="dash-period">' +
+      '<span>Este mes: <strong>' + thisCount + '</strong></span>' +
+      '<span>Mes anterior: <strong>' + lastCount + '</strong></span>' +
+      (trend ? '<span>' + trend + '</span>' : '') +
     '</div>';
 }
 
@@ -683,6 +728,7 @@ function getFilteredEntries(procFilterId) {
 // ==================== SORTING ====================
 function setSort(field) {
   currentSort = field;
+  localStorage.setItem('eba-sort', field);
   document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.sort === field); });
   refreshEntriesList();
 }
@@ -1225,13 +1271,30 @@ function updateFilterCount() {
 
 // ==================== TABS ====================
 function switchTab(name) {
+  // Warn if leaving registro tab with unsaved data
+  var activeTab = document.querySelector('.tab.active');
+  if (activeTab && activeTab.dataset.tab === 'registro' && name !== 'registro' && hasUnsavedForm()) {
+    if (!confirm('Tienes datos sin guardar en el formulario. Salir de todos modos?')) return;
+  }
   document.querySelectorAll('.tab').forEach(function(x) { x.classList.toggle('active', x.dataset.tab === name); });
   ['procesos','registro','listado','informe','datos'].forEach(function(id) { document.getElementById('tab-' + id).style.display = id === name ? 'block' : 'none'; });
   if (name === 'listado') { populateProjectFilters(); refreshEntriesList(); }
   if (name === 'informe') populateProjectFilters();
   if (name === 'procesos') { renderProcList(); renderDashboard(); }
+  if (name === 'datos') updateStorageUsage();
   updateFab();
   if (getSyncProvider()) syncPull();
+}
+
+function hasUnsavedForm() {
+  var desc = document.getElementById('f-desc');
+  var resp = document.getElementById('f-resp');
+  var prov = document.getElementById('f-prov');
+  var ref = document.getElementById('f-ref');
+  var acc = document.getElementById('f-accion');
+  return (desc && desc.value.trim()) || (resp && resp.value.trim()) ||
+         (prov && prov.value.trim()) || (ref && ref.value.trim()) ||
+         (acc && acc.value.trim()) || pendingAttachments.length > 0;
 }
 
 // ==================== INIT ====================
@@ -1245,7 +1308,12 @@ document.getElementById('f-camera').addEventListener('change', handleFileSelecti
 });
 var filterTimer = null;
 document.getElementById('filt-text').addEventListener('input', function() {
-  clearTimeout(filterTimer); filterTimer = setTimeout(refreshEntriesList, 250);
+  var list = document.getElementById('entries-list');
+  if (list) list.classList.add('filtering');
+  clearTimeout(filterTimer); filterTimer = setTimeout(function() {
+    refreshEntriesList();
+    if (list) list.classList.remove('filtering');
+  }, 250);
 });
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { closeLightbox(); closeEditEntry(); closeGlobalSearch(); closeEntryDetail(); }
@@ -1261,4 +1329,143 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// Restore sort buttons from persisted preference
+document.querySelectorAll('.sort-btn').forEach(function(b) {
+  b.classList.toggle('active', b.dataset.sort === currentSort);
+});
+
 load();
+checkAutoBackup();
+initSavedFilters();
+snapshotKnownEntries();
+
+// ==================== LOCALSTORAGE SPACE ====================
+function updateStorageUsage() {
+  var el = document.getElementById('storage-usage');
+  if (!el) return;
+  var used = 0;
+  try {
+    for (var k in localStorage) {
+      if (localStorage.hasOwnProperty(k)) used += localStorage[k].length * 2; // UTF-16
+    }
+  } catch (e) {}
+  var maxBytes = 5 * 1024 * 1024;
+  var pct = Math.min(100, Math.round(used / maxBytes * 100));
+  var usedKB = Math.round(used / 1024);
+  var cls = pct > 80 ? ' storage-warn' : (pct > 60 ? ' storage-mid' : '');
+  el.innerHTML = '<div class="storage-label">Almacenamiento local: ' + usedKB + ' KB / 5.120 KB (' + pct + '%)</div>' +
+    '<div class="storage-bar' + cls + '"><div class="storage-bar-fill" style="width:' + pct + '%"></div></div>' +
+    (pct > 80 ? '<div class="storage-tip">Espacio bajo. Exporta un backup y reduce adjuntos.</div>' : '');
+}
+
+// ==================== AUTO-BACKUP ====================
+function checkAutoBackup() {
+  var last = localStorage.getItem(_autoBackupKey);
+  var now = Date.now();
+  var interval = 7 * 24 * 60 * 60 * 1000; // 7 days
+  if (last && (now - Number(last)) < interval) return;
+  if (!state.entries.length) return;
+  // Schedule backup download after 2s (non-intrusive)
+  setTimeout(function() {
+    doAutoBackup();
+    localStorage.setItem(_autoBackupKey, String(now));
+  }, 2000);
+}
+
+function doAutoBackup() {
+  try {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'eba-autobackup-' + today() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup automatico descargado');
+  } catch (e) { console.error('Auto-backup failed:', e); }
+}
+
+// ==================== SAVED FILTERS ====================
+function initSavedFilters() {
+  renderSavedFilters();
+}
+
+function getSavedFilters() {
+  try { return JSON.parse(localStorage.getItem(_savedFiltersKey)) || []; }
+  catch (e) { return []; }
+}
+
+function saveCurrentFilter() {
+  var name = prompt('Nombre para este filtro:');
+  if (!name || !name.trim()) return;
+  var filter = {
+    name: name.trim(),
+    proc: document.getElementById('filt-proc').value,
+    fase: document.getElementById('filt-fase').value,
+    tipo: document.getElementById('filt-tipo').value,
+    estado: document.getElementById('filt-estado').value,
+    sev: document.getElementById('filt-sev').value,
+    text: document.getElementById('filt-text').value
+  };
+  var saved = getSavedFilters();
+  saved.push(filter);
+  localStorage.setItem(_savedFiltersKey, JSON.stringify(saved));
+  renderSavedFilters();
+  showToast('Filtro guardado');
+}
+
+function applySavedFilter(idx) {
+  var saved = getSavedFilters();
+  var f = saved[idx];
+  if (!f) return;
+  document.getElementById('filt-proc').value = f.proc || '';
+  document.getElementById('filt-fase').value = f.fase || '';
+  document.getElementById('filt-tipo').value = f.tipo || '';
+  document.getElementById('filt-estado').value = f.estado || '';
+  document.getElementById('filt-sev').value = f.sev || '';
+  document.getElementById('filt-text').value = f.text || '';
+  refreshEntriesList();
+  showToast('Filtro "' + esc(f.name) + '" aplicado');
+}
+
+function deleteSavedFilter(idx) {
+  var saved = getSavedFilters();
+  saved.splice(idx, 1);
+  localStorage.setItem(_savedFiltersKey, JSON.stringify(saved));
+  renderSavedFilters();
+}
+
+function renderSavedFilters() {
+  var el = document.getElementById('saved-filters');
+  if (!el) return;
+  var saved = getSavedFilters();
+  if (!saved.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="saved-filters-row">' +
+    saved.map(function(f, i) {
+      return '<button class="saved-filter-chip" onclick="applySavedFilter(' + i + ')">' +
+        esc(f.name) +
+        '<span class="saved-filter-remove" onclick="event.stopPropagation();deleteSavedFilter(' + i + ')">&#10005;</span>' +
+      '</button>';
+    }).join('') + '</div>';
+}
+
+// ==================== SYNC NOTIFICATIONS ====================
+function snapshotKnownEntries() {
+  _knownEntryIds = {};
+  state.entries.forEach(function(e) { _knownEntryIds[e.id] = true; });
+}
+
+function checkNewEntriesAfterSync(oldIds) {
+  var newHighSev = [];
+  state.entries.forEach(function(e) {
+    if (!oldIds[e.id] && e.sev === 'alta' && e.estado !== 'resuelta') {
+      newHighSev.push(e);
+    }
+  });
+  if (newHighSev.length) {
+    showToast(newHighSev.length + ' nueva(s) entrada(s) critica(s) recibida(s)');
+    // Update badge if on listado tab
+    updateTabBadges();
+  }
+  snapshotKnownEntries();
+}

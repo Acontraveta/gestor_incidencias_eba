@@ -995,6 +995,70 @@ button.danger:hover { background: var(--eba-light); }
 .header-btn.sync-error svg { fill: #ff6b6b; }
 @keyframes syncSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* ==================== LAST SYNC LABEL ==================== */
+.last-sync-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* ==================== DASHBOARD PERIOD COMPARISON ==================== */
+.dash-period {
+  display: flex; align-items: center; gap: 16px;
+  margin-top: 10px; font-size: 12px; color: var(--muted);
+  padding: 10px 14px; background: var(--surface-hover);
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
+.trend-up { color: var(--eba); font-weight: 700; }
+.trend-down { color: #3d8c1a; font-weight: 700; }
+.trend-flat { color: var(--hint); font-weight: 600; }
+
+/* ==================== STORAGE USAGE ==================== */
+.storage-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.storage-bar {
+  height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px;
+  overflow: hidden; margin-bottom: 4px;
+}
+.storage-bar-fill {
+  height: 100%; background: #6aae3c; border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.storage-bar.storage-mid .storage-bar-fill { background: #e8a735; }
+.storage-bar.storage-warn .storage-bar-fill { background: var(--eba); }
+.storage-tip { font-size: 11px; color: var(--eba-dark); font-weight: 500; margin-top: 2px; }
+
+/* ==================== SAVED FILTERS ==================== */
+.saved-filters-row {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+}
+.saved-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; font-size: 12px; font-weight: 500;
+  background: var(--eba-light); color: var(--eba-dark);
+  border: 1px solid rgba(168,43,32,0.15);
+  border-radius: 999px; cursor: pointer;
+  min-height: auto; width: auto;
+  transition: all var(--transition);
+}
+.saved-filter-chip:hover { background: rgba(209,59,46,0.15); }
+.saved-filter-remove {
+  font-size: 10px; opacity: 0.5; cursor: pointer;
+  transition: opacity var(--transition);
+}
+.saved-filter-remove:hover { opacity: 1; }
+.save-filter-btn {
+  padding: 4px 10px; font-size: 11px; min-height: auto;
+  width: auto; background: transparent; border: 1px dashed var(--border-strong);
+  color: var(--muted); border-radius: 999px; cursor: pointer;
+  transition: all var(--transition);
+}
+.save-filter-btn:hover { border-color: var(--eba); color: var(--eba); }
+
+/* ==================== FILTER LOADING INDICATOR ==================== */
+#entries-list.filtering { opacity: 0.5; transition: opacity 0.15s; }
+
 /* ==================== PRINT ==================== */
 @media print {
   .no-print, .fab, .app-header, .current-proc-bar, .tabs, .sort-bar { display: none !important; }

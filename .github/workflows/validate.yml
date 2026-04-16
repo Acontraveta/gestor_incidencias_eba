@@ -1,0 +1,31 @@
+name: Validate HTML
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install html5validator
+        run: pip install html5validator
+
+      - name: Validate HTML
+        run: html5validator --root public/ --also-check-css
+
+      - name: Check div balance
+        run: |
+          for f in public/*.html; do
+            opens=$(grep -oP '<div[\s>]' "$f" | wc -l)
+            closes=$(grep -oP '</div>' "$f" | wc -l)
+            if [ "$opens" -ne "$closes" ]; then
+              echo "ERROR: $f has $opens <div> opens but $closes </div> closes"
+              exit 1
+            fi
+            echo "OK: $f - $opens divs balanced"
+          done
