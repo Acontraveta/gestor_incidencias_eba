@@ -1,4 +1,4 @@
-var CACHE_NAME = 'eba-incidencias-v3';
+var CACHE_NAME = 'eba-incidencias-v4';
 var URLS_TO_CACHE = [
   './',
   './index.html',
