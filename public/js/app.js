@@ -815,7 +815,7 @@ function openEntryDetail(id) {
     (faseLabel ? '<span class="badge b-fase">' + esc(faseLabel) + '</span>' : '') +
     '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
     '<span class="badge ' + sevB + '">sev: ' + esc(e.sev) + '</span>' +
-    '<span class="badge ' + estB + (isAdmin() ? ' clickable" onclick="cycleEstado(' + e.id + ');openEntryDetail(' + e.id + ')' : '') + '">' + esc(estL) + '</span>';
+    '<span class="badge ' + estB + ((isAdmin() || e.estado === 'abierta') ? ' clickable" onclick="cycleEstado(' + e.id + ');openEntryDetail(' + e.id + ')' : '') + '">' + esc(estL) + '</span>';
 
   // Project + date
   var proj = state.processes.find(function(p) { return p.id === e.procId; });
@@ -871,11 +871,16 @@ function openEntryDetail(id) {
 
   // Footer actions
   var footer = '';
-  if (isAdmin()) {
-    var nextEst = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
-    var nextLabel = nextEst[e.estado] === 'progreso' ? 'En progreso' : (nextEst[e.estado] === 'resuelta' ? 'Resuelta' : 'Abierta');
-    var nextIcon = nextEst[e.estado] === 'resuelta' ? '&#9989;' : (nextEst[e.estado] === 'progreso' ? '&#9654;' : '&#9711;');
+  var nextEst = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
+  var nextVal = nextEst[e.estado];
+  // Basico can only move abierta->progreso
+  var canCycle = isAdmin() || (nextVal === 'progreso');
+  if (canCycle) {
+    var nextLabel = nextVal === 'progreso' ? 'En progreso' : (nextVal === 'resuelta' ? 'Resuelta' : 'Abierta');
+    var nextIcon = nextVal === 'resuelta' ? '&#9989;' : (nextVal === 'progreso' ? '&#9654;' : '&#9711;');
     footer += '<button class="detail-estado-btn" onclick="cycleEstado(' + e.id + ');openEntryDetail(' + e.id + ')">' + nextIcon + ' ' + esc(nextLabel) + '</button>';
+  }
+  if (isAdmin()) {
     footer += '<button onclick="openEditEntry(' + e.id + ');closeEntryDetail()" style="background:var(--surface-hover);color:var(--ink);">Editar</button>';
     footer += '<button onclick="duplicateEntry(' + e.id + ');closeEntryDetail()" style="background:var(--surface-hover);color:var(--ink);">Duplicar</button>';
     footer += '<button class="danger" onclick="if(confirm(\'Eliminar esta entrada?\')){deleteEntry(' + e.id + ',true);closeEntryDetail();}">Eliminar</button>';
@@ -932,11 +937,16 @@ function deleteEntry(id, skipConfirm) {
 }
 
 function cycleEstado(id) {
-  if (!isAdmin()) { showToast('Solo administradores pueden cambiar el estado'); return; }
   var e = state.entries.find(function(x) { return x.id === id; });
   if (!e) return;
   var next = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
-  e.estado = next[e.estado] || 'abierta';
+  var nextEstado = next[e.estado] || 'abierta';
+  // Basico can move to 'progreso' but only admin can close ('resuelta') or reopen
+  if (!isAdmin() && (nextEstado === 'resuelta' || nextEstado === 'abierta')) {
+    showToast('Solo administradores pueden cerrar o reabrir entradas');
+    return;
+  }
+  e.estado = nextEstado;
   save(); refreshEntriesList(); renderAll();
   showToast('Estado: ' + (e.estado === 'progreso' ? 'en progreso' : e.estado));
 }
