@@ -22,6 +22,9 @@ var pendingAttachments = [];
 var editingEntryId = null;
 var currentSort = 'fecha';
 var syncConfig = null;
+var userRole = 'admin'; // 'admin' or 'basico'
+
+function isAdmin() { return userRole === 'admin'; }
 
 // ==================== HELPERS ====================
 function esc(s) {
@@ -314,21 +317,25 @@ function updateSyncWizardUI() {
 }
 
 function generateShareURL() {
-  var el = document.getElementById('sync-share-url');
-  if (!el || !syncConfig || !syncConfig.token) return;
-  var cfg = { b: syncConfig.backend, t: syncConfig.token, g: syncConfig.gistId || '' };
-  var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  if (!syncConfig || !syncConfig.token) return;
   var base = location.href.split('?')[0].split('#')[0];
-  el.value = base + '?sync=' + encoded;
+  // Admin link
+  var cfgAdmin = { b: syncConfig.backend, t: syncConfig.token, g: syncConfig.gistId || '', r: 'admin' };
+  var elAdmin = document.getElementById('sync-share-url-admin');
+  if (elAdmin) elAdmin.value = base + '?sync=' + btoa(unescape(encodeURIComponent(JSON.stringify(cfgAdmin))));
+  // Basic link
+  var cfgBasic = { b: syncConfig.backend, t: syncConfig.token, g: syncConfig.gistId || '', r: 'basico' };
+  var elBasic = document.getElementById('sync-share-url-basico');
+  if (elBasic) elBasic.value = base + '?sync=' + btoa(unescape(encodeURIComponent(JSON.stringify(cfgBasic))));
 }
 
-function copyShareLink() {
-  var el = document.getElementById('sync-share-url');
+function copyShareLink(role) {
+  var el = document.getElementById('sync-share-url-' + role);
   if (!el || !el.value) return;
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(el.value).then(function() { showToast('Enlace copiado'); });
+    navigator.clipboard.writeText(el.value).then(function() { showToast('Enlace ' + role + ' copiado'); });
   } else {
-    el.select(); document.execCommand('copy'); showToast('Enlace copiado');
+    el.select(); document.execCommand('copy'); showToast('Enlace ' + role + ' copiado');
   }
 }
 
@@ -340,6 +347,7 @@ function applyConfigFromURL() {
     var cfg = JSON.parse(decodeURIComponent(escape(atob(syncParam))));
     if (!cfg.b || !cfg.t) return false;
     syncConfig = { backend: cfg.b, token: cfg.t, gistId: cfg.g || null };
+    userRole = (cfg.r === 'admin') ? 'admin' : 'basico';
     if (cfg.b === 'server') { syncConfig.serverUrl = cfg.u || ''; syncConfig.serverToken = cfg.t; }
     localStorage.setItem(SYNC_KEY, JSON.stringify(syncConfig));
     // Clean URL without reloading
@@ -415,6 +423,21 @@ function renderAll() {
   populateProjectFilters();
   updateTabBadges();
   updateFab();
+  applyRoleUI();
+}
+
+function applyRoleUI() {
+  var admin = isAdmin();
+  // Hide/show admin-only elements in static HTML
+  document.querySelectorAll('.admin-only').forEach(function(el) {
+    el.style.display = admin ? '' : 'none';
+  });
+  // Show role badge in header
+  var badge = document.getElementById('role-badge');
+  if (badge) {
+    badge.textContent = admin ? 'Admin' : 'Basico';
+    badge.className = 'role-badge ' + (admin ? 'role-admin' : 'role-basico');
+  }
 }
 // ==================== DARK THEME ====================
 function toggleTheme() {
@@ -513,10 +536,10 @@ function renderProcList() {
       '<div class="proc-meta" style="margin-top:6px;">' + entries.length + ' entradas &middot; ' + abiertas + ' sin resolver' + (altas ? ' &middot; <span style="color:var(--eba-dark);font-weight:600;">' + altas + ' critica(s)</span>' : '') + '</div>' +
       '<div class="proc-progress"><div class="proc-progress-bar" style="width:' + pct + '%"></div></div>' +
       '<div class="proc-meta">' + pct + '% resueltas</div>' +
-      '<div class="actions">' +
+      (isAdmin() ? '<div class="actions">' +
         '<button onclick="event.stopPropagation();editProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>' +
         '<button class="danger" onclick="event.stopPropagation();deleteProcess(' + p.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>' +
-      '</div></div>';
+      '</div>' : '') + '</div>';
   }).join('') + '</div>';
 }
 
@@ -533,6 +556,7 @@ function addProcess() {
 }
 
 function editProcess(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden editar proyectos'); return; }
   var p = state.processes.find(function(x) { return x.id === id; });
   if (!p) return;
   var name = prompt('Nombre del proyecto:', p.name);
@@ -550,6 +574,7 @@ function editProcess(id) {
 }
 
 function deleteProcess(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden eliminar proyectos'); return; }
   var p = state.processes.find(function(x) { return x.id === id; });
   if (!p) return;
   var count = state.entries.filter(function(e) { return e.procId === id; }).length;
@@ -709,7 +734,7 @@ function renderEntry(e, withActions, showProject) {
     var proj = state.processes.find(function(p) { return p.id === e.procId; });
     if (proj) projectLabel = '<div class="entry-project">' + esc(proj.code || proj.name) + '</div>';
   }
-  var estClick = withActions ? ' clickable" onclick="cycleEstado(' + e.id + ')' : '';
+  var estClick = (withActions && isAdmin()) ? ' clickable" onclick="cycleEstado(' + e.id + ')' : '';
   var metaParts = [];
   if (e.resp) metaParts.push('Responsable: ' + esc(e.resp));
   if (e.prov) metaParts.push('Proveedor: ' + esc(e.prov));
@@ -729,11 +754,16 @@ function renderEntry(e, withActions, showProject) {
         '<button onclick="addComment(' + e.id + ')">+</button>' +
       '</div></div>';
   }
-  var actions = withActions ? '<div class="actions no-print">' +
-    '<button onclick="openEditEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>' +
-    '<button onclick="duplicateEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Duplicar</button>' +
-    '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>' +
-  '</div>' : '';
+  var actions = '';
+  if (withActions) {
+    actions = '<div class="actions no-print">';
+    if (isAdmin()) {
+      actions += '<button onclick="openEditEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>';
+      actions += '<button onclick="duplicateEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Duplicar</button>';
+      actions += '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>';
+    }
+    actions += '</div>';
+  }
   return '<div class="entry sev-' + e.sev + '">' +
     projectLabel +
     '<div class="entry-header">' +
@@ -767,12 +797,14 @@ function addComment(entryId) {
 
 // ==================== ENTRY ACTIONS ====================
 function deleteEntry(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden eliminar entradas'); return; }
   if (!confirm('Eliminar esta entrada?')) return;
   state.entries = state.entries.filter(function(e) { return e.id !== id; });
   save(); refreshEntriesList(); renderAll(); showToast('Entrada eliminada');
 }
 
 function cycleEstado(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden cambiar el estado'); return; }
   var e = state.entries.find(function(x) { return x.id === id; });
   if (!e) return;
   var next = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
@@ -782,6 +814,7 @@ function cycleEstado(id) {
 }
 
 function duplicateEntry(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden duplicar entradas'); return; }
   var e = state.entries.find(function(x) { return x.id === id; });
   if (!e) return;
   var clone = JSON.parse(JSON.stringify(e));
@@ -795,6 +828,7 @@ function duplicateEntry(id) {
 }
 // ==================== ENTRY EDITING ====================
 function openEditEntry(id) {
+  if (!isAdmin()) { showToast('Solo administradores pueden editar entradas'); return; }
   var e = state.entries.find(function(x) { return x.id === id; });
   if (!e) return;
   editingEntryId = id;
@@ -964,6 +998,7 @@ function importJSON(ev) {
 }
 
 function wipeAll() {
+  if (!isAdmin()) { showToast('Solo administradores pueden borrar datos'); return; }
   if (!confirm('Borrar TODOS los datos?')) return;
   if (!confirm('Ultima confirmacion: seguro?')) return;
   state = { processes: [], entries: [] }; currentProc = null;

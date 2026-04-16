@@ -17,7 +17,7 @@
     <div class="header-left">
       <div class="header-logo"><img src="icon.svg" alt="EBA" style="height:32px;width:auto;"></div>
       <div>
-        <div class="header-title">Gestor de incidencias</div>
+        <div class="header-title">Gestor de incidencias <span id="role-badge" class="role-badge role-admin">Admin</span></div>
         <div class="header-sub">Departamento de producto</div>
       </div>
     </div>
@@ -155,7 +155,7 @@
         </div>
         <p style="font-size:12px;color:var(--muted);margin:0;">Los datos se sincronizan en tiempo real con el equipo.</p>
       </div>
-      <div id="sync-admin-section">
+      <div id="sync-admin-section" class="admin-only">
         <div class="form-group"><label for="sync-backend">Backend</label>
           <select id="sync-backend" onchange="toggleSyncConfig()"><option value="">Desactivado</option><option value="github">GitHub (Gist privado)</option><option value="server">Servidor propio</option></select>
         </div>
@@ -182,10 +182,20 @@
               <div class="form-group"><label>Gist ID</label><input id="sync-gist-id" type="text" readonly style="font-size:11px;color:var(--hint);"></div>
               <div style="padding:12px;background:var(--surface-hover);border-radius:8px;margin-bottom:12px;">
                 <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;">Compartir con el equipo</p>
-                <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Envia este enlace. Quien lo abra vera los datos automaticamente, sin configurar nada.</p>
-                <div class="form-row" style="gap:8px;">
-                  <input id="sync-share-url" type="text" readonly style="font-size:11px;flex:1;" onclick="this.select()">
-                  <button onclick="copyShareLink()" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:12px;">Copiar</button>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Genera dos enlaces distintos segun el nivel de acceso.</p>
+                <div style="margin-bottom:10px;">
+                  <label style="font-size:12px;font-weight:600;color:var(--ink);">Enlace Admin (control total)</label>
+                  <div class="form-row" style="gap:8px;margin-top:4px;">
+                    <input id="sync-share-url-admin" type="text" readonly style="font-size:11px;flex:1;" onclick="this.select()">
+                    <button onclick="copyShareLink('admin')" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:12px;">Copiar</button>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:12px;font-weight:600;color:var(--ink);">Enlace Basico (solo crear)</label>
+                  <div class="form-row" style="gap:8px;margin-top:4px;">
+                    <input id="sync-share-url-basico" type="text" readonly style="font-size:11px;flex:1;" onclick="this.select()">
+                    <button onclick="copyShareLink('basico')" style="width:auto;flex:0 0 auto;padding:6px 14px;font-size:12px;">Copiar</button>
+                  </div>
                 </div>
               </div>
               <button onclick="disconnectSync()" style="background:var(--surface-hover);color:var(--danger);font-size:12px;">Desconectar</button>
@@ -206,9 +216,9 @@
         <button onclick="exportJSON()">Exportar JSON</button>
         <button onclick="exportCSV()" style="background:var(--surface-hover);color:var(--ink);">Exportar CSV</button>
       </div>
-      <div class="form-group" style="margin-top:12px;"><label for="import-file">Importar copia</label><input id="import-file" type="file" accept=".json" onchange="importJSON(event)"></div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-      <button class="danger" onclick="wipeAll()">Borrar todos los datos</button>
+      <div class="form-group admin-only" style="margin-top:12px;"><label for="import-file">Importar copia</label><input id="import-file" type="file" accept=".json" onchange="importJSON(event)"></div>
+      <hr class="admin-only" style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+      <button class="danger admin-only" onclick="wipeAll()">Borrar todos los datos</button>
     </div>
   </div>
   <!-- FAB -->
