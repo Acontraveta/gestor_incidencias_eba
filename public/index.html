@@ -232,6 +232,20 @@
   </div>
   <!-- LIGHTBOX -->
   <div id="lightbox" class="lightbox" onclick="closeLightbox()"><img id="lightbox-img" src="" alt="Vista ampliada"></div>
+  <!-- ENTRY DETAIL MODAL -->
+  <div id="entry-detail-overlay" class="detail-overlay" onclick="if(event.target===this)closeEntryDetail()">
+    <div class="detail-panel">
+      <div class="detail-header">
+        <div class="detail-header-top">
+          <div class="detail-badges" id="detail-badges"></div>
+          <button class="detail-close" onclick="closeEntryDetail()">&#10005;</button>
+        </div>
+        <div class="detail-project-date" id="detail-project-date"></div>
+      </div>
+      <div class="detail-body" id="detail-body"></div>
+      <div class="detail-footer" id="detail-footer"></div>
+    </div>
+  </div>
   <!-- EDIT OVERLAY -->
   <div id="edit-overlay" class="edit-overlay">
     <div class="edit-panel">

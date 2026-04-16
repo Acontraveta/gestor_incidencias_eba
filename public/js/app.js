@@ -721,8 +721,50 @@ function refreshEntriesList() {
   updateFilterCount();
 }
 
-// ==================== RENDER ENTRY ====================
+// ==================== RENDER ENTRY (compact card for list) ====================
 function renderEntry(e, withActions, showProject) {
+  var tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
+  var sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
+  var estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
+  var estL = e.estado === 'progreso' ? 'en progreso' : e.estado;
+  var faseLabel = FASES[e.fase] || e.fase || '';
+  var projectLabel = '';
+  if (showProject) {
+    var proj = state.processes.find(function(p) { return p.id === e.procId; });
+    if (proj) projectLabel = esc(proj.code || proj.name);
+  }
+  var comments = e.comments || [];
+  var atts = e.attachments || [];
+  var metaParts = [];
+  if (projectLabel) metaParts.push(projectLabel);
+  if (e.resp) metaParts.push(esc(e.resp));
+  if (comments.length) metaParts.push(comments.length + ' nota' + (comments.length !== 1 ? 's' : ''));
+  if (atts.length) metaParts.push(atts.length + ' adj.');
+
+  // For reports (withActions=false) keep the old full render
+  if (!withActions) {
+    return renderEntryFull(e, showProject);
+  }
+
+  var desc = e.desc.length > 100 ? e.desc.substring(0, 100) + '...' : e.desc;
+  return '<div class="entry-card" onclick="openEntryDetail(' + e.id + ')">' +
+    '<div class="entry-sev-indicator sev-' + e.sev + '"></div>' +
+    '<div class="entry-card-body">' +
+      '<div class="entry-card-top">' +
+        '<span class="entry-date">' + esc(e.fecha) + '</span>' +
+        '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
+        '<span class="badge ' + sevB + '">' + esc(e.sev) + '</span>' +
+        '<span class="badge ' + estB + '">' + esc(estL) + '</span>' +
+      '</div>' +
+      '<div class="entry-card-desc">' + esc(e.desc) + '</div>' +
+      (metaParts.length ? '<div class="entry-card-meta">' + metaParts.join(' &middot; ') + '</div>' : '') +
+    '</div>' +
+    '<div class="entry-card-arrow">&#8250;</div>' +
+  '</div>';
+}
+
+// Full render for reports (non-interactive)
+function renderEntryFull(e, showProject) {
   var tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
   var sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
   var estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
@@ -734,36 +776,10 @@ function renderEntry(e, withActions, showProject) {
     var proj = state.processes.find(function(p) { return p.id === e.procId; });
     if (proj) projectLabel = '<div class="entry-project">' + esc(proj.code || proj.name) + '</div>';
   }
-  var estClick = (withActions && isAdmin()) ? ' clickable" onclick="cycleEstado(' + e.id + ')' : '';
   var metaParts = [];
   if (e.resp) metaParts.push('Responsable: ' + esc(e.resp));
   if (e.prov) metaParts.push('Proveedor: ' + esc(e.prov));
   if (e.ref) metaParts.push('Ref: ' + esc(e.ref));
-  var comments = e.comments || [];
-  var commentsHtml = '';
-  if (withActions) {
-    var commentsList = comments.map(function(c) {
-      return '<div class="comment"><span class="comment-date">' + esc(c.date) + '</span><div class="comment-text">' + esc(c.text) + '</div></div>';
-    }).join('');
-    commentsHtml = '<div class="entry-comments">' +
-      '<div class="entry-comments-title" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
-        '\uD83D\uDCAC ' + comments.length + ' nota' + (comments.length !== 1 ? 's' : '') + '</div>' +
-      '<div class="comments-list" style="' + (comments.length ? '' : 'display:none') + '">' + commentsList + '</div>' +
-      '<div class="add-comment-row">' +
-        '<input type="text" placeholder="Anadir nota..." id="comment-' + e.id + '" maxlength="500" onkeydown="if(event.key===\'Enter\')addComment(' + e.id + ')">' +
-        '<button onclick="addComment(' + e.id + ')">+</button>' +
-      '</div></div>';
-  }
-  var actions = '';
-  if (withActions) {
-    actions = '<div class="actions no-print">';
-    if (isAdmin()) {
-      actions += '<button onclick="openEditEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Editar</button>';
-      actions += '<button onclick="duplicateEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Duplicar</button>';
-      actions += '<button class="danger" onclick="deleteEntry(' + e.id + ')" style="width:auto;flex:0 0 auto;font-size:12px;padding:4px 10px;">Eliminar</button>';
-    }
-    actions += '</div>';
-  }
   return '<div class="entry sev-' + e.sev + '">' +
     projectLabel +
     '<div class="entry-header">' +
@@ -771,15 +787,127 @@ function renderEntry(e, withActions, showProject) {
       (faseLabel ? '<span class="badge b-fase">' + esc(faseLabel) + '</span>' : '') +
       '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
       '<span class="badge ' + sevB + '">sev: ' + esc(e.sev) + '</span>' +
-      '<span class="badge ' + estB + estClick + '">' + esc(estL) + '</span>' +
+      '<span class="badge ' + estB + '">' + esc(estL) + '</span>' +
     '</div>' +
     '<div class="entry-desc">' + esc(e.desc) + '</div>' +
     (e.accion ? '<div class="entry-desc" style="font-style:italic;color:var(--muted);"><strong style="font-style:normal;">Accion:</strong> ' + esc(e.accion) + '</div>' : '') +
     (metaParts.length ? '<div class="entry-meta">' + metaParts.join(' \u00B7 ') + '</div>' : '') +
     (atts ? '<div class="attachments">' + atts + '</div>' : '') +
-    commentsHtml +
-    actions +
   '</div>';
+}
+
+// ==================== ENTRY DETAIL MODAL ====================
+var _currentDetailId = null;
+
+function openEntryDetail(id) {
+  var e = state.entries.find(function(x) { return x.id === id; });
+  if (!e) return;
+  _currentDetailId = id;
+  var overlay = document.getElementById('entry-detail-overlay');
+
+  // Badges
+  var tipoB = e.tipo === 'incidencia' ? 'b-inc' : (e.tipo === 'mejora' ? 'b-mej' : 'b-obs');
+  var sevB = 'b-' + (e.sev === 'alta' ? 'high' : e.sev === 'media' ? 'med' : 'low');
+  var estB = 'b-' + (e.estado === 'abierta' ? 'open' : e.estado === 'progreso' ? 'prog' : 'done');
+  var estL = e.estado === 'progreso' ? 'en progreso' : e.estado;
+  var faseLabel = FASES[e.fase] || e.fase || '';
+  document.getElementById('detail-badges').innerHTML =
+    (faseLabel ? '<span class="badge b-fase">' + esc(faseLabel) + '</span>' : '') +
+    '<span class="badge ' + tipoB + '">' + esc(e.tipo) + '</span>' +
+    '<span class="badge ' + sevB + '">sev: ' + esc(e.sev) + '</span>' +
+    '<span class="badge ' + estB + (isAdmin() ? ' clickable" onclick="cycleEstado(' + e.id + ');openEntryDetail(' + e.id + ')' : '') + '">' + esc(estL) + '</span>';
+
+  // Project + date
+  var proj = state.processes.find(function(p) { return p.id === e.procId; });
+  var projName = proj ? (proj.code ? proj.code + ' \u2014 ' : '') + proj.name : '';
+  document.getElementById('detail-project-date').innerHTML =
+    (projName ? '<span>' + esc(projName) + '</span><span>\u00B7</span>' : '') +
+    '<span>' + esc(e.fecha) + '</span>';
+
+  // Body
+  var body = '';
+  // Description
+  body += '<div class="detail-section">';
+  body += '<div class="detail-section-label">Descripcion</div>';
+  body += '<div class="detail-section-text">' + esc(e.desc) + '</div>';
+  body += '</div>';
+  // Action
+  if (e.accion) {
+    body += '<div class="detail-section">';
+    body += '<div class="detail-section-label">Accion / solucion</div>';
+    body += '<div class="detail-section-text">' + esc(e.accion) + '</div>';
+    body += '</div>';
+  }
+  // Meta grid
+  var hasMeta = e.resp || e.prov || e.ref;
+  if (hasMeta) {
+    body += '<div class="detail-section"><div class="detail-section-label">Detalles</div><div class="detail-meta-grid">';
+    if (e.resp) body += '<div class="detail-meta-item"><div class="detail-section-label">Responsable</div><div class="detail-section-text">' + esc(e.resp) + '</div></div>';
+    if (e.prov) body += '<div class="detail-meta-item"><div class="detail-section-label">Proveedor</div><div class="detail-section-text">' + esc(e.prov) + '</div></div>';
+    if (e.ref) body += '<div class="detail-meta-item"><div class="detail-section-label">Ref / lote</div><div class="detail-section-text">' + esc(e.ref) + '</div></div>';
+    body += '</div></div>';
+  }
+  // Attachments
+  var atts = e.attachments || [];
+  if (atts.length) {
+    body += '<div class="detail-section"><div class="detail-section-label">Adjuntos (' + atts.length + ')</div>';
+    body += '<div class="detail-attachments">' + atts.map(function(a, i) { return renderAttachment(a, i, false); }).join('') + '</div></div>';
+  }
+  // Comments
+  var comments = e.comments || [];
+  body += '<div class="detail-section"><div class="detail-section-label">Notas (' + comments.length + ')</div>';
+  if (comments.length) {
+    body += '<div class="detail-comments-list">';
+    comments.forEach(function(c) {
+      body += '<div class="detail-comment"><div class="detail-comment-date">' + esc(c.date) + '</div><div class="detail-comment-text">' + esc(c.text) + '</div></div>';
+    });
+    body += '</div>';
+  }
+  body += '<div class="detail-add-comment">';
+  body += '<input type="text" id="detail-comment-input" placeholder="Anadir nota..." maxlength="500" onkeydown="if(event.key===\'Enter\')addCommentFromDetail()">';
+  body += '<button onclick="addCommentFromDetail()">+</button>';
+  body += '</div></div>';
+  document.getElementById('detail-body').innerHTML = body;
+
+  // Footer actions
+  var footer = '';
+  if (isAdmin()) {
+    var nextEst = { abierta: 'progreso', progreso: 'resuelta', resuelta: 'abierta' };
+    var nextLabel = nextEst[e.estado] === 'progreso' ? 'En progreso' : (nextEst[e.estado] === 'resuelta' ? 'Resuelta' : 'Abierta');
+    var nextIcon = nextEst[e.estado] === 'resuelta' ? '&#9989;' : (nextEst[e.estado] === 'progreso' ? '&#9654;' : '&#9711;');
+    footer += '<button class="detail-estado-btn" onclick="cycleEstado(' + e.id + ');openEntryDetail(' + e.id + ')">' + nextIcon + ' ' + esc(nextLabel) + '</button>';
+    footer += '<button onclick="openEditEntry(' + e.id + ');closeEntryDetail()" style="background:var(--surface-hover);color:var(--ink);">Editar</button>';
+    footer += '<button onclick="duplicateEntry(' + e.id + ');closeEntryDetail()" style="background:var(--surface-hover);color:var(--ink);">Duplicar</button>';
+    footer += '<button class="danger" onclick="if(confirm(\'Eliminar esta entrada?\')){deleteEntry(' + e.id + ',true);closeEntryDetail();}">Eliminar</button>';
+  }
+  document.getElementById('detail-footer').innerHTML = footer;
+
+  overlay.classList.add('active');
+  // Focus the comment input after render
+  setTimeout(function() {
+    var inp = document.getElementById('detail-comment-input');
+    if (inp) inp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 300);
+}
+
+function closeEntryDetail() {
+  document.getElementById('entry-detail-overlay').classList.remove('active');
+  _currentDetailId = null;
+}
+
+function addCommentFromDetail() {
+  if (!_currentDetailId) return;
+  var input = document.getElementById('detail-comment-input');
+  if (!input) return;
+  var text = sanitize(input.value, 500);
+  if (!text) return;
+  var e = state.entries.find(function(x) { return x.id === _currentDetailId; });
+  if (!e) return;
+  if (!e.comments) e.comments = [];
+  e.comments.push({ date: new Date().toISOString().slice(0, 16).replace('T', ' '), text: text });
+  save(); refreshEntriesList();
+  openEntryDetail(_currentDetailId); // Re-render modal
+  showToast('Nota agregada');
 }
 
 // ==================== COMMENTS ====================
@@ -796,9 +924,9 @@ function addComment(entryId) {
 }
 
 // ==================== ENTRY ACTIONS ====================
-function deleteEntry(id) {
+function deleteEntry(id, skipConfirm) {
   if (!isAdmin()) { showToast('Solo administradores pueden eliminar entradas'); return; }
-  if (!confirm('Eliminar esta entrada?')) return;
+  if (!skipConfirm && !confirm('Eliminar esta entrada?')) return;
   state.entries = state.entries.filter(function(e) { return e.id !== id; });
   save(); refreshEntriesList(); renderAll(); showToast('Entrada eliminada');
 }
@@ -1040,6 +1168,7 @@ function goToEntry(entryId) {
   var fp = document.getElementById('filt-proc');
   if (fp) fp.value = String(e.procId);
   switchTab('listado');
+  setTimeout(function() { openEntryDetail(entryId); }, 100);
 }
 
 // ==================== UI HELPERS ====================
@@ -1108,7 +1237,7 @@ document.getElementById('filt-text').addEventListener('input', function() {
   clearTimeout(filterTimer); filterTimer = setTimeout(refreshEntriesList, 250);
 });
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { closeLightbox(); closeEditEntry(); closeGlobalSearch(); }
+  if (e.key === 'Escape') { closeLightbox(); closeEditEntry(); closeGlobalSearch(); closeEntryDetail(); }
 });
 document.getElementById('edit-overlay').addEventListener('click', function(e) { if (e.target === this) closeEditEntry(); });
 
