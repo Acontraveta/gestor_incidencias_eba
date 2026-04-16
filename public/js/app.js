@@ -887,9 +887,7 @@ function openEntryDetail(id) {
   }
   document.getElementById('detail-footer').innerHTML = footer;
 
-  overlay.classList.add('active');
-  // Force synchronous repaint to ensure the overlay is visible immediately
-  void overlay.offsetHeight;
+  overlay.style.display = 'flex';
   // Focus the comment input after render
   setTimeout(function() {
     var inp = document.getElementById('detail-comment-input');
@@ -898,7 +896,7 @@ function openEntryDetail(id) {
 }
 
 function closeEntryDetail() {
-  document.getElementById('entry-detail-overlay').classList.remove('active');
+  document.getElementById('entry-detail-overlay').style.display = 'none';
   _currentDetailId = null;
 }
 
@@ -983,10 +981,9 @@ function openEditEntry(id) {
   document.getElementById('edit-desc').value = e.desc;
   document.getElementById('edit-accion').value = e.accion || '';
   var editOv = document.getElementById('edit-overlay');
-  editOv.classList.add('active');
-  void editOv.offsetHeight;
+  editOv.style.display = 'flex';
 }
-function closeEditEntry() { document.getElementById('edit-overlay').classList.remove('active'); editingEntryId = null; }
+function closeEditEntry() { document.getElementById('edit-overlay').style.display = 'none'; editingEntryId = null; }
 function saveEditEntry() {
   var e = state.entries.find(function(x) { return x.id === editingEntryId; });
   if (!e) return;

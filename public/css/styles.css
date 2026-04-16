@@ -636,14 +636,9 @@ button.danger:hover { background: var(--eba-light); }
 .detail-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.45);
-  display: flex; align-items: flex-end; justify-content: center;
+  display: none; align-items: flex-end; justify-content: center;
   z-index: 998; padding: 0;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, visibility 0.2s;
 }
-.detail-overlay.active { visibility: visible; opacity: 1; pointer-events: auto; }
 .detail-panel {
   background: var(--surface);
   width: 100%; max-width: 640px;
@@ -778,17 +773,12 @@ button.danger:hover { background: var(--eba-light); }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.45);
-  display: flex;
+  display: none;
   align-items: flex-end;
   justify-content: center;
   z-index: 999;
   padding: 0;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, visibility 0.2s;
 }
-.edit-overlay.active { visibility: visible; opacity: 1; pointer-events: auto; }
 .edit-panel {
   background: var(--surface);
   width: 100%;
