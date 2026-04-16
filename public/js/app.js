@@ -747,7 +747,7 @@ function renderEntry(e, withActions, showProject) {
   }
 
   var desc = e.desc.length > 100 ? e.desc.substring(0, 100) + '...' : e.desc;
-  return '<div class="entry-card" onclick="openEntryDetail(' + e.id + ')">' +
+  return '<div class="entry-card" data-entry-id="' + e.id + '">' +
     '<div class="entry-sev-indicator sev-' + e.sev + '"></div>' +
     '<div class="entry-card-body">' +
       '<div class="entry-card-top">' +
@@ -1240,5 +1240,14 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { closeLightbox(); closeEditEntry(); closeGlobalSearch(); closeEntryDetail(); }
 });
 document.getElementById('edit-overlay').addEventListener('click', function(e) { if (e.target === this) closeEditEntry(); });
+document.getElementById('entry-detail-overlay').addEventListener('click', function(e) { if (e.target === this) closeEntryDetail(); });
+
+// Event delegation for entry cards (more robust than inline onclick)
+document.addEventListener('click', function(e) {
+  var card = e.target.closest('.entry-card');
+  if (card && card.dataset.entryId) {
+    openEntryDetail(Number(card.dataset.entryId));
+  }
+});
 
 load();
