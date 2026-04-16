@@ -888,6 +888,8 @@ function openEntryDetail(id) {
   document.getElementById('detail-footer').innerHTML = footer;
 
   overlay.classList.add('active');
+  // Force synchronous repaint to ensure the overlay is visible immediately
+  void overlay.offsetHeight;
   // Focus the comment input after render
   setTimeout(function() {
     var inp = document.getElementById('detail-comment-input');
@@ -980,7 +982,9 @@ function openEditEntry(id) {
   document.getElementById('edit-ref').value = e.ref || '';
   document.getElementById('edit-desc').value = e.desc;
   document.getElementById('edit-accion').value = e.accion || '';
-  document.getElementById('edit-overlay').classList.add('active');
+  var editOv = document.getElementById('edit-overlay');
+  editOv.classList.add('active');
+  void editOv.offsetHeight;
 }
 function closeEditEntry() { document.getElementById('edit-overlay').classList.remove('active'); editingEntryId = null; }
 function saveEditEntry() {

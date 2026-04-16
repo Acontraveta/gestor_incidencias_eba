@@ -635,11 +635,9 @@ button.danger:hover { background: var(--eba-light); }
 /* ==================== ENTRY DETAIL MODAL ==================== */
 .detail-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.45);
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 998; padding: 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -779,13 +777,12 @@ button.danger:hover { background: var(--eba-light); }
 .edit-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 999;
   padding: 0;
-  backdrop-filter: blur(4px);
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
